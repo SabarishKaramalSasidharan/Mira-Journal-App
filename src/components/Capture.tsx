@@ -89,9 +89,10 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
     setDraft((d) => (d ? d + ' ' : '') + finalText.trim()),
   )
 
-  useEffect(() => {
-    taRef.current?.focus()
-  }, [])
+  // Intentionally NOT auto-focusing the composer on mount / tab arrival: doing
+  // so pops the iOS keyboard before people have seen the page (mascot, mood
+  // chips, intro). The textarea only takes focus when the user taps it, or
+  // after they send a message and are clearly mid-conversation (see send()).
 
   // Keep the composer sized to its content even when text arrives via voice
   // (which sets state directly and bypasses the textarea's onChange auto-grow).
@@ -125,7 +126,8 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
     const q = await getMoodOpener(m, dayContext(selectedDate))
     setThinking(false)
     setTurns((t) => [...t, { role: 'mira', text: q }])
-    taRef.current?.focus()
+    // No focus here: tapping a mood shouldn't force the keyboard open. People
+    // can read Mira's reply first, then tap the box when they're ready to type.
   }
 
   const send = async () => {

@@ -9,6 +9,7 @@ import Timeline from './components/Timeline'
 import Reflection from './components/Reflection'
 import Settings from './components/Settings'
 import Mascot from './components/Mascot'
+import Splash from './components/Splash'
 import StreakSheet from './components/StreakSheet'
 import SuccessMoment from './components/SuccessMoment'
 import EntryDetail from './components/EntryDetail'
@@ -66,6 +67,8 @@ export default function App() {
   const [showStreak, setShowStreak] = useState(false)
   const [journalTheme, setJournalTheme] = useState<string | null>(null)
   const [openEntry, setOpenEntry] = useState<Entry | null>(null)
+  // Cold-start splash: true only for this initial mount (full page / PWA launch).
+  const [showSplash, setShowSplash] = useState(true)
 
   const streak = useMemo(() => computeStreak(entries), [entries])
   const streaks = useMemo(() => streakStats(entries), [entries])
@@ -276,6 +279,8 @@ export default function App() {
           />
         )}
       </div>
+
+      {showSplash && <Splash onDone={() => setShowSplash(false)} />}
     </div>
   )
 }

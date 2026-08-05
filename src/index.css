@@ -249,4 +249,10 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+
+  /* The celebratory pop/scale settles into a single calm fade instead of a
+     zeroed-out jump. Confetti is suppressed entirely in Celebration.tsx. */
+  .animate-pop {
+    animation: fade-up 0.2s ease-out both !important;
+  }
 }

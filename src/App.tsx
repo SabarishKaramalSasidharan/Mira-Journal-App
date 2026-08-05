@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { BookOpen, Flame, Moon, PenLine, Settings as SettingsIcon, Sparkles, Sun, SunMoon } from 'lucide-react'
 import type { Entry } from './types'
-import { computeStreak, deleteEntry, loadEntries, streakStats, upsertEntry } from './lib/storage'
+import { computeStreak, deleteEntry, loadEntries, streakStats, upsertEntry, type StreakStats } from './lib/storage'
 import { loadSettings } from './lib/llm'
 import { applyTheme, loadTheme, setTheme, watchSystem, type ThemeMode } from './lib/theme'
 import Capture from './components/Capture'
@@ -15,6 +15,46 @@ import EntryDetail from './components/EntryDetail'
 
 type Tab = 'write' | 'journal' | 'reflect'
 
+// Streak lengths worth an earned celebration. Mirrors the (unexported) list in
+// lib/storage.ts; kept in sync here since storage.ts is owned by another change.
+const MILESTONES = [3, 7, 14, 30, 60, 100, 180, 365]
+// Journaling this many distinct days in the current calendar week "hits the week".
+const WEEKLY_GOAL = 5
+
+/** Distinct days journaled in the current calendar week (Sunday start). */
+function distinctDaysThisWeek(entries: Entry[]): number {
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  start.setDate(start.getDate() - start.getDay())
+  const startT = start.getTime()
+  return new Set(
+    entries.filter((e) => e.createdAt >= startT).map((e) => new Date(e.createdAt).toDateString()),
+  ).size
+}
+
+/** Longest run EXCLUDING the current active streak — i.e. the record to beat. */
+function bestBeforeCurrentRun(entries: Entry[], currentRun: number): number {
+  if (currentRun === 0) return streakStats(entries).best
+  const dayStrings = new Set(entries.map((e) => new Date(e.createdAt).toDateString()))
+  const cursor = new Date()
+  if (!dayStrings.has(cursor.toDateString())) cursor.setDate(cursor.getDate() - 1)
+  const runDates = new Set<string>()
+  for (let i = 0; i < currentRun; i++) {
+    runDates.add(cursor.toDateString())
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  const rest = entries.filter((e) => !runDates.has(new Date(e.createdAt).toDateString()))
+  return streakStats(rest).best
+}
+
+interface SuccessState {
+  entry: Entry
+  stats: StreakStats
+  kind: 'quiet' | 'milestone'
+  headline: string | null
+  trigger: HTMLElement | null
+}
+
 export default function App() {
   const [entries, setEntries] = useState<Entry[]>(() => loadEntries())
   const [tab, setTab] = useState<Tab>('write')
@@ -22,7 +62,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState(() => loadSettings())
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => loadTheme())
-  const [success, setSuccess] = useState<{ extended: boolean; firstEver: boolean } | null>(null)
+  const [success, setSuccess] = useState<SuccessState | null>(null)
   const [showStreak, setShowStreak] = useState(false)
   const [journalTheme, setJournalTheme] = useState<string | null>(null)
   const [openEntry, setOpenEntry] = useState<Entry | null>(null)
@@ -54,13 +94,46 @@ export default function App() {
     setEntries(upsertEntry(entry))
   }
 
-  // Explicit "Finish" — save (idempotent) and open the celebratory success moment.
+  // Explicit "Finish" — save (idempotent), then either a quiet reflect-back close
+  // (ordinary finish) or an earned celebration (milestone). See milestone rules below.
   const handleFinish = (entry: Entry) => {
+    // Remember what was focused (the Finish button) so a modal celebration can
+    // return focus there on close.
+    const trigger = (document.activeElement as HTMLElement) ?? null
+
     const updated = upsertEntry(entry)
     setEntries(updated)
+
+    const prev = updated.filter((e) => e.id !== entry.id)
     const after = computeStreak(updated)
-    const before = computeStreak(updated.filter((e) => e.id !== entry.id))
-    setSuccess({ extended: after > before, firstEver: updated.length === 1 })
+    const before = computeStreak(prev)
+    const stats = streakStats(updated)
+    const firstEver = updated.length === 1
+    const priorBest = bestBeforeCurrentRun(updated, after)
+
+    // Celebration is GATED to these milestones — a routine streak +1 stays quiet.
+    let headline: string | null = null
+    if (firstEver) {
+      headline = 'Your first entry.'
+    } else if (after > before && MILESTONES.includes(after)) {
+      headline = `${after} days in a row.`
+    } else if (after > before && before <= priorBest && after > priorBest) {
+      // First day the current run overtakes the previous record.
+      headline = `New best — ${after} days.`
+    } else if (
+      distinctDaysThisWeek(updated) >= WEEKLY_GOAL &&
+      distinctDaysThisWeek(prev) < WEEKLY_GOAL
+    ) {
+      headline = 'You hit your week.'
+    }
+
+    setSuccess({
+      entry,
+      stats,
+      kind: headline ? 'milestone' : 'quiet',
+      headline,
+      trigger,
+    })
   }
 
   const writeAnother = () => {
@@ -73,6 +146,9 @@ export default function App() {
     setJournalTheme(null)
     setTab('journal')
   }
+
+  // Plain dismiss — a calm return to where they were (no navigation).
+  const dismissSuccess = () => setSuccess(null)
 
   const startNew = () => {
     setCaptureKey((k) => k + 1)
@@ -170,9 +246,12 @@ export default function App() {
 
         {success && (
           <SuccessMoment
-            stats={streaks}
-            extended={success.extended}
-            firstEver={success.firstEver}
+            entry={success.entry}
+            stats={success.stats}
+            kind={success.kind}
+            headline={success.headline}
+            trigger={success.trigger}
+            onDone={dismissSuccess}
             onWriteAnother={writeAnother}
             onSeeJournal={seeJournal}
           />

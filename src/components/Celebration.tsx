@@ -16,6 +16,15 @@ export default function Celebration({ show, onDone }: { show: boolean; onDone?: 
 
   useEffect(() => {
     if (!show) return
+    // Honor reduced motion: no falling confetti at all (the moment still lands
+    // via the calm card fade). Nothing to animate, so bail before spawning pieces.
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    ) {
+      onDone?.()
+      return
+    }
     const next: Piece[] = Array.from({ length: 48 }, (_, i) => ({
       id: i,
       left: Math.random() * 100,

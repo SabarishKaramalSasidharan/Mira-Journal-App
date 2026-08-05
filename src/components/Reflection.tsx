@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { Entry } from '../types'
 import { getWeeklyInsight, themeCounts, weeklyReflection } from '../lib/ai'
-import { computeStreak } from '../lib/storage'
 import { MoodTrend, ThemeBars } from './Charts'
+import WeeklyRecap from './WeeklyRecap'
 import Mascot from './Mascot'
 
 interface Props {
@@ -13,7 +13,6 @@ interface Props {
 export default function Reflection({ entries, onSelectTheme }: Props) {
   const r = weeklyReflection(entries)
   const themes = themeCounts(entries, 7)
-  const streak = computeStreak(entries)
 
   const [insight, setInsight] = useState(r.insight)
   const [loadingInsight, setLoadingInsight] = useState(false)
@@ -57,22 +56,10 @@ export default function Reflection({ entries, onSelectTheme }: Props) {
           {/* One theme section — tap a theme to see the entries behind it. */}
           <ThemeBars data={themes} onSelect={onSelectTheme} />
 
-          {/* Compact footer stats — no longer duplicating the theme/mood cards. */}
-          <div className="grid grid-cols-2 gap-3">
-            <Stat big={String(r.entryCount)} label={r.entryCount === 1 ? 'entry this week' : 'entries this week'} />
-            <Stat big={String(streak)} label="day streak" />
-          </div>
+          {/* Warm weekly recap — one cohesive summary of the last 7 days. */}
+          <WeeklyRecap entries={entries} onSelectTheme={onSelectTheme} />
         </div>
       )}
-    </div>
-  )
-}
-
-function Stat({ big, label }: { big: string; label: string }) {
-  return (
-    <div className="rounded-2xl bg-surface p-4 shadow-sm">
-      <div className="truncate font-display text-2xl font-bold text-content">{big}</div>
-      <div className="mt-0.5 text-xs font-semibold text-mute">{label}</div>
     </div>
   )
 }

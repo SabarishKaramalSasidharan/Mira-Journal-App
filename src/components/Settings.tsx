@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import type { LLMSettings, Provider } from '../lib/llm'
 import { PROVIDER_PRESETS, llmFollowUp, saveSettings } from '../lib/llm'
-import { resolveIsDark, type ThemeMode } from '../lib/theme'
-import { PALETTES, applyPalette, loadPalette, savePalette } from '../lib/palette'
+import type { ThemeMode } from '../lib/theme'
 import Button from './Button'
 
 interface Props {
@@ -18,13 +17,6 @@ export default function Settings({ initial, themeMode, onThemeChange, onClose, o
   const [s, setS] = useState<LLMSettings>(initial)
   const [testing, setTesting] = useState(false)
   const [testMsg, setTestMsg] = useState<string | null>(null)
-  const [palette, setPalette] = useState(() => loadPalette())
-
-  const pickPalette = (id: string) => {
-    setPalette(id)
-    savePalette(id)
-    applyPalette(id, resolveIsDark(themeMode))
-  }
 
   const setProvider = (provider: Provider) => {
     if (provider === 'local') {
@@ -92,31 +84,6 @@ export default function Settings({ initial, themeMode, onThemeChange, onClose, o
                 {m === 'light' ? 'Light' : m === 'dark' ? 'Dark' : 'Auto'}
               </button>
             ))}
-          </div>
-
-          <p className="mb-2 mt-4 text-xs font-bold text-soft">Color</p>
-          <div className="grid grid-cols-6 gap-2">
-            {PALETTES.map((p) => {
-              const active = palette === p.id
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => pickPalette(p.id)}
-                  aria-label={`${p.name} color theme`}
-                  aria-pressed={active}
-                  title={p.name}
-                  className="grid aspect-square place-items-center rounded-full transition active:scale-90"
-                  style={{
-                    background: p.swatch,
-                    boxShadow: active
-                      ? '0 0 0 3px var(--surface), 0 0 0 5px ' + p.swatch
-                      : '0 2px 0 0 rgba(0,0,0,0.12)',
-                  }}
-                >
-                  {active && <Check size={16} color="#ffffff" strokeWidth={3} aria-hidden="true" />}
-                </button>
-              )
-            })}
           </div>
         </section>
 

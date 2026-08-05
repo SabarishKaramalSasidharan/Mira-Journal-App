@@ -67,7 +67,8 @@ export const PALETTES: Palette[] = [
 const KEY = 'mira.palette.v1'
 
 export function loadPalette(): string {
-  return localStorage.getItem(KEY) ?? 'teal'
+  // Brand locked to teal for now. PALETTES/savePalette retained so the picker can be re-enabled later.
+  return 'teal'
 }
 
 export function savePalette(id: string) {

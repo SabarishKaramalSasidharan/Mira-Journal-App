@@ -94,11 +94,12 @@ export default function App() {
     setEntries(upsertEntry(entry))
   }
 
-  // Explicit "Finish" — save (idempotent), then either a quiet reflect-back close
-  // (ordinary finish) or an earned celebration (milestone). See milestone rules below.
+  // Explicit "Finish" — save (idempotent), land on the Journal tab, then show a
+  // positive confirmation popup OVER it: a simple "saved" note (ordinary finish)
+  // or an earned celebration (milestone). See milestone rules below.
   const handleFinish = (entry: Entry) => {
-    // Remember what was focused (the Finish button) so a modal celebration can
-    // return focus there on close.
+    // Remember what was focused (the Finish button) so the modal can return
+    // focus there on close.
     const trigger = (document.activeElement as HTMLElement) ?? null
 
     const updated = upsertEntry(entry)
@@ -127,6 +128,10 @@ export default function App() {
       headline = 'You hit your week.'
     }
 
+    // Land on the entries tab; the confirmation popup renders over this view.
+    setJournalTheme(null)
+    setTab('journal')
+
     setSuccess({
       entry,
       stats,
@@ -141,13 +146,7 @@ export default function App() {
     startNew()
   }
 
-  const seeJournal = () => {
-    setSuccess(null)
-    setJournalTheme(null)
-    setTab('journal')
-  }
-
-  // Plain dismiss — a calm return to where they were (no navigation).
+  // Primary "Close" — dismiss the popup and stay on the Journal tab.
   const dismissSuccess = () => setSuccess(null)
 
   const startNew = () => {
@@ -253,7 +252,6 @@ export default function App() {
             trigger={success.trigger}
             onDone={dismissSuccess}
             onWriteAnother={writeAnother}
-            onSeeJournal={seeJournal}
           />
         )}
 

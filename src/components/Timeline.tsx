@@ -244,8 +244,8 @@ export default function Timeline({
   const groups = groupByMonth(shown)
 
   return (
-    <div className="no-scrollbar h-full overflow-y-auto">
-      <div className="px-5 pt-6 pb-2">
+    <div className="flex h-full flex-col">
+      <div className="shrink-0 bg-bg px-5 pt-6 pb-2">
         {filterTheme ? (
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="min-w-0">
@@ -315,80 +315,82 @@ export default function Timeline({
         )}
       </div>
 
-      {shown.length === 0 ? (
-        <div className="mt-16 px-5 text-center">
-          <p className="font-medium text-soft">
-            {monthFilter && !q && !moodFilter
-              ? `No entries in ${monthKeyLabel(monthFilter)}.`
-              : q || moodFilter || monthFilter
-                ? `No entries match your filters${q ? ` for "${query.trim()}"` : ''}.`
-                : 'No entries here yet.'}
-          </p>
-        </div>
-      ) : (
-        groups.map((g) => (
-          <section key={g.key}>
-            <div className="sticky top-0 z-10 flex items-baseline justify-between border-b border-border bg-bg px-5 py-2">
-              <h3 className="font-display text-sm font-bold text-content">{g.label}</h3>
-              <span className="text-xs font-bold text-mute">
-                {g.entries.length} {g.entries.length === 1 ? 'entry' : 'entries'}
-              </span>
-            </div>
-            <div className="space-y-3 px-5 py-3">
-              {g.entries.map((e) => (
-                <article
-                  key={e.id}
-                  onClick={() => onOpen?.(e)}
-                  role={onOpen ? 'button' : undefined}
-                  tabIndex={onOpen ? 0 : undefined}
-                  onKeyDown={(ev) => {
-                    if (onOpen && (ev.key === 'Enter' || ev.key === ' ')) {
-                      ev.preventDefault()
-                      onOpen(e)
-                    }
-                  }}
-                  aria-label={onOpen ? `Open entry from ${when(e.createdAt)}` : undefined}
-                  className={`animate-fade-up rounded-2xl bg-surface p-4 shadow-sm transition ${
-                    onOpen ? 'cursor-pointer hover:shadow-md active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none' : ''
-                  }`}
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-bold text-mute">{when(e.createdAt)}</span>
-                    <span
-                      className="grid h-8 w-8 place-items-center rounded-xl text-lg"
-                      style={{ background: e.mood ? MOOD_VAR[e.mood] : 'var(--surface-2)' }}
-                    >
-                      {moodEmoji(e)}
-                    </span>
-                  </div>
-                  <p className="font-medium leading-relaxed text-content">{e.summary}</p>
-                  {e.themes.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {e.themes.map((t) => (
-                        <button
-                          key={t}
-                          onClick={(ev) => {
-                            ev.stopPropagation()
-                            onSelectTheme?.(t)
-                          }}
-                          disabled={!onSelectTheme}
-                          className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition active:scale-95 disabled:pointer-events-none ${
-                            t === filterTheme
-                              ? 'bg-accent text-on-accent'
-                              : 'bg-accent-soft text-accent-text'
-                          }`}
-                        >
-                          #{t}
-                        </button>
-                      ))}
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto pb-4">
+        {shown.length === 0 ? (
+          <div className="mt-16 px-5 text-center">
+            <p className="font-medium text-soft">
+              {monthFilter && !q && !moodFilter
+                ? `No entries in ${monthKeyLabel(monthFilter)}.`
+                : q || moodFilter || monthFilter
+                  ? `No entries match your filters${q ? ` for "${query.trim()}"` : ''}.`
+                  : 'No entries here yet.'}
+            </p>
+          </div>
+        ) : (
+          groups.map((g) => (
+            <section key={g.key}>
+              <div className="sticky top-0 z-10 flex items-baseline justify-between border-b border-border bg-bg px-5 py-2">
+                <h3 className="font-display text-sm font-bold text-content">{g.label}</h3>
+                <span className="text-xs font-bold text-mute">
+                  {g.entries.length} {g.entries.length === 1 ? 'entry' : 'entries'}
+                </span>
+              </div>
+              <div className="space-y-3 px-5 py-3">
+                {g.entries.map((e) => (
+                  <article
+                    key={e.id}
+                    onClick={() => onOpen?.(e)}
+                    role={onOpen ? 'button' : undefined}
+                    tabIndex={onOpen ? 0 : undefined}
+                    onKeyDown={(ev) => {
+                      if (onOpen && (ev.key === 'Enter' || ev.key === ' ')) {
+                        ev.preventDefault()
+                        onOpen(e)
+                      }
+                    }}
+                    aria-label={onOpen ? `Open entry from ${when(e.createdAt)}` : undefined}
+                    className={`animate-fade-up rounded-2xl bg-surface p-4 shadow-sm transition ${
+                      onOpen ? 'cursor-pointer hover:shadow-md active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none' : ''
+                    }`}
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-xs font-bold text-mute">{when(e.createdAt)}</span>
+                      <span
+                        className="grid h-8 w-8 place-items-center rounded-xl text-lg"
+                        style={{ background: e.mood ? MOOD_VAR[e.mood] : 'var(--surface-2)' }}
+                      >
+                        {moodEmoji(e)}
+                      </span>
                     </div>
-                  )}
-                </article>
-              ))}
-            </div>
-          </section>
-        ))
-      )}
+                    <p className="font-medium leading-relaxed text-content">{e.summary}</p>
+                    {e.themes.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {e.themes.map((t) => (
+                          <button
+                            key={t}
+                            onClick={(ev) => {
+                              ev.stopPropagation()
+                              onSelectTheme?.(t)
+                            }}
+                            disabled={!onSelectTheme}
+                            className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition active:scale-95 disabled:pointer-events-none ${
+                              t === filterTheme
+                                ? 'bg-accent text-on-accent'
+                                : 'bg-accent-soft text-accent-text'
+                            }`}
+                          >
+                            #{t}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </section>
+          ))
+        )}
+      </div>
     </div>
   )
 }

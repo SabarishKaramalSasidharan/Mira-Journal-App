@@ -127,29 +127,60 @@ function QuietMoment({ trigger, onDone, onWriteAnother }: QuietProps) {
         style={{ animationDuration: '0.2s' }}
       />
 
-      {/* Card */}
+      {/* Card — springs in with a subtle scale + gentle overshoot. */}
       <div
         ref={sheetRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={headlineId}
         tabIndex={-1}
-        className="animate-pop relative w-full max-w-[320px] rounded-3xl bg-surface px-6 pb-6 pt-7 text-center"
+        className="animate-card-spring relative w-full max-w-[320px] rounded-3xl bg-surface px-6 pb-6 pt-7 text-center"
         style={{ boxShadow: 'var(--shadow-lg)' }}
       >
-        <div className="mx-auto mb-3 grid h-20 w-20 place-items-center rounded-full bg-accent-soft">
-          <Mascot size={64} mood="joy" decorative />
+        {/* Mascot moment: a soft pop, one calm ring bloom, and two tiny sparkles. */}
+        <div className="relative mx-auto mb-3 h-20 w-20">
+          <span
+            aria-hidden
+            className="animate-badge-ring pointer-events-none absolute inset-0 rounded-full border-2 border-accent"
+          />
+          <div className="animate-badge-pop grid h-20 w-20 place-items-center rounded-full bg-accent-soft">
+            <Mascot size={64} mood="joy" decorative />
+          </div>
+          <span
+            aria-hidden
+            className="animate-sparkle pointer-events-none absolute -right-0.5 top-0 text-base leading-none text-gold"
+            style={{ animationDelay: '0.28s' }}
+          >
+            ✦
+          </span>
+          <span
+            aria-hidden
+            className="animate-sparkle pointer-events-none absolute bottom-1 -left-0.5 text-xs leading-none text-accent"
+            style={{ animationDelay: '0.4s' }}
+          >
+            ✦
+          </span>
         </div>
 
-        <h2 id={headlineId} className="font-display text-2xl font-semibold text-content">
+        <h2
+          id={headlineId}
+          className="animate-rise font-display text-2xl font-semibold text-content"
+          style={{ animationDelay: '0.14s' }}
+        >
           Saved to your journal
         </h2>
 
-        <p className="mt-1 text-sm font-medium text-soft">
+        <p
+          className="animate-rise mt-1 text-sm font-medium text-soft"
+          style={{ animationDelay: '0.2s' }}
+        >
           Another moment captured — nicely done.
         </p>
 
-        <div className="mt-6 flex flex-col gap-2">
+        <div
+          className="animate-rise mt-6 flex flex-col gap-2"
+          style={{ animationDelay: '0.28s' }}
+        >
           <Button size="lg" onClick={onDone}>
             Close
           </Button>

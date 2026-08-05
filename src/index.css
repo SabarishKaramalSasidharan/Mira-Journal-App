@@ -206,6 +206,61 @@
     transform: translateY(-6px);
   }
 }
+/* Quiet success card: springs in with a slight upward settle + gentle overshoot. */
+@keyframes card-spring {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+/* Mascot badge: a soft pop that overshoots then settles. */
+@keyframes badge-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  65% {
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+/* A single calm ring that blooms outward from the badge and fades. */
+@keyframes badge-ring {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.65);
+  }
+}
+/* Tiny sparkles that twinkle once near the drop, then fade. */
+@keyframes sparkle {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-8deg);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1) rotate(10deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5) rotate(24deg);
+  }
+}
 @keyframes confetti-fall {
   0% {
     opacity: 1;
@@ -234,6 +289,22 @@
   animation: bob 3s ease-in-out infinite;
 }
 
+/* ---- Quiet success popup: calm, premium one-shot delight ---- */
+.animate-card-spring {
+  animation: card-spring 0.42s var(--ease-spring) both;
+}
+.animate-badge-pop {
+  animation: badge-pop 0.5s var(--ease-spring) both;
+  animation-delay: 0.08s;
+}
+.animate-badge-ring {
+  animation: badge-ring 0.7s ease-out both;
+  animation-delay: 0.2s;
+}
+.animate-sparkle {
+  animation: sparkle 0.55s ease-out both;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -255,5 +326,17 @@
      zeroed-out jump. Confetti is suppressed entirely in Celebration.tsx. */
   .animate-pop {
     animation: fade-up 0.2s ease-out both !important;
+  }
+
+  /* Quiet-popup delight collapses to a plain, near-instant fade: no spring,
+     no overshoot, no bob/stagger. Decorative ring + sparkles are dropped. */
+  .animate-card-spring,
+  .animate-badge-pop {
+    animation: fade-up 0.2s ease-out both !important;
+    animation-delay: 0s !important;
+  }
+  .animate-badge-ring,
+  .animate-sparkle {
+    display: none !important;
   }
 }

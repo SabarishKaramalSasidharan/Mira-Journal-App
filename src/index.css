@@ -225,6 +225,10 @@
 .animate-pop {
   animation: pop-in 0.4s var(--ease-spring) both;
 }
+/* Calm, premium entrance: soft fade + gentle rise, no zoom/overshoot. */
+.animate-rise {
+  animation: fade-up 0.3s ease-out both;
+}
 .animate-bob {
   animation: bob 3s ease-in-out infinite;
 }

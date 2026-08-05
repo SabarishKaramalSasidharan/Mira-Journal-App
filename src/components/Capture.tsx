@@ -276,21 +276,21 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
       {/* Quick mood log — one tap logs a mood, then this row collapses away.
           One entry = one mood, so we don't stack multiple moods per conversation. */}
       {!moodOpened && (
-        <div className="animate-pop px-4 pt-1">
+        <div className="px-4 pt-1">
           <div className="mb-1.5 px-1">
             <span
-              className={`text-xs font-bold ${!hasWritten ? 'text-accent-text' : 'text-soft'}`}
+              className={`animate-rise text-xs font-bold ${!hasWritten ? 'text-accent-text' : 'text-soft'}`}
             >
               {moodLabel}
             </span>
           </div>
           <div className="grid grid-cols-5 gap-1.5">
-            {MOODS.map((m) => (
+            {MOODS.map((m, i) => (
               <button
                 key={m.key}
                 onClick={() => selectMood(m.key)}
-                className="grid h-12 place-items-center rounded-2xl text-2xl ring-1 ring-border transition-all active:scale-90"
-                style={{ background: 'var(--surface-2)' }}
+                className="animate-rise grid h-12 place-items-center rounded-2xl text-2xl ring-1 ring-border transition-all active:scale-90"
+                style={{ background: 'var(--surface-2)', animationDelay: `${i * 40}ms` }}
                 title={m.label}
                 aria-label={m.label}
               >

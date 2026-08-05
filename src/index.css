@@ -127,7 +127,7 @@
     background: var(--bg);
     color: var(--content);
     font-family: var(--font-sans);
-    font-weight: 500;
+    font-weight: 400;
     -webkit-font-smoothing: antialiased;
     overscroll-behavior: none;
     transition: background 0.3s ease, color 0.3s ease;
@@ -141,8 +141,9 @@
   h2,
   h3 {
     font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
   }
 
   /* Accessible keyboard focus for every interactive element */
@@ -163,7 +164,7 @@
   border: none;
   cursor: pointer;
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 500;
   border-radius: var(--radius-lg);
   transition: transform 0.06s var(--ease-spring), box-shadow 0.06s ease, filter 0.15s ease;
   will-change: transform;

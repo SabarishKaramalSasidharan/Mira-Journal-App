@@ -180,7 +180,7 @@ export default function App() {
         <header className="flex items-center justify-between px-5 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="flex items-center gap-2 pt-3">
             <Mascot size={34} className="animate-bob" />
-            <span className="font-display text-xl font-bold tracking-tight text-content">Mira</span>
+            <span className="font-display text-xl font-semibold tracking-tight text-content">Mira</span>
           </div>
           <div className="flex items-center gap-2 pt-3">
             <button
@@ -190,7 +190,7 @@ export default function App() {
               title={`${streak}-day streak`}
             >
               <Flame size={16} className="text-flame" aria-hidden="true" />
-              <span className="font-display font-bold text-content">
+              <span className="font-display font-semibold text-content">
                 {streak}
                 <span className="sr-only"> day streak</span>
               </span>
@@ -297,7 +297,7 @@ function NavBtn({
     <button
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className={`flex flex-1 flex-col items-center gap-0.5 rounded-2xl py-1.5 text-[11px] font-bold transition ${
+      className={`flex flex-1 flex-col items-center gap-0.5 rounded-2xl py-1.5 text-[11px] font-semibold transition ${
         active ? 'text-accent-text' : 'text-soft'
       }`}
     >

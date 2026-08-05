@@ -117,14 +117,14 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
         </button>
 
         <div className="min-w-0 flex-1 text-center">
-          <div className="truncate text-sm font-bold text-content">{fullWhen(entry.createdAt)}</div>
-          <div className="text-[11px] font-bold text-mute">{editing ? 'Editing' : 'Entry'}</div>
+          <div className="truncate text-sm font-semibold text-content">{fullWhen(entry.createdAt)}</div>
+          <div className="text-[11px] font-semibold text-mute">{editing ? 'Editing' : 'Entry'}</div>
         </div>
 
         {editing ? (
           <button
             onClick={save}
-            className="flex items-center gap-1 rounded-full bg-accent px-3.5 py-1.5 text-sm font-bold text-on-accent transition active:scale-95"
+            className="flex items-center gap-1 rounded-full bg-accent px-3.5 py-1.5 text-sm font-semibold text-on-accent transition active:scale-95"
           >
             <Check size={15} aria-hidden="true" /> Save
           </button>
@@ -141,7 +141,7 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
 
       {/* Edit-mode hint — makes it clear what's editable and what's locked. */}
       {editing && (
-        <div className="flex items-center justify-center gap-1.5 border-b border-border bg-accent-soft px-4 py-2 text-center text-[11px] font-bold text-accent-text">
+        <div className="flex items-center justify-center gap-1.5 border-b border-border bg-accent-soft px-4 py-2 text-center text-[11px] font-semibold text-accent-text">
           <Pencil size={12} aria-hidden="true" />
           {editableCount > 0
             ? "Edit your messages & mood · Mira's prompts stay put"
@@ -152,7 +152,7 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
       {/* Mood editor */}
       {editing && (
         <div className="border-b border-border px-4 py-3">
-          <div className="mb-1.5 text-xs font-bold text-soft">Mood</div>
+          <div className="mb-1.5 text-xs font-semibold text-soft">Mood</div>
           <div className="grid grid-cols-5 gap-1.5">
             {MOODS.map((m) => (
               <button
@@ -183,7 +183,7 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
               : t.text
             return (
               <div key={i} className="flex justify-end">
-                <div className="rounded-full bg-accent px-4 py-2 text-sm font-bold text-on-accent shadow-sm">
+                <div className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-on-accent shadow-sm">
                   {label}
                 </div>
               </div>
@@ -204,7 +204,7 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
                   placeholder="Your message…"
                   className="w-[85%] resize-none overflow-hidden rounded-2xl rounded-br-md border-2 border-dashed border-white/70 bg-accent px-4 py-3 text-[15px] font-medium leading-relaxed text-on-accent caret-white shadow-sm outline-none transition placeholder:text-white/60 focus:border-solid focus:ring-2 focus:ring-white/70"
                 />
-                <span className="flex items-center gap-1 pr-1 text-[10px] font-bold text-mute">
+                <span className="flex items-center gap-1 pr-1 text-[10px] font-semibold text-mute">
                   <Pencil size={10} aria-hidden="true" /> tap to edit
                 </span>
               </div>
@@ -235,7 +235,7 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
         {!editing && entry.themes.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
             {entry.themes.map((th) => (
-              <span key={th} className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-bold text-accent-text">
+              <span key={th} className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-semibold text-accent-text">
                 #{th}
               </span>
             ))}
@@ -248,17 +248,17 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
         <div className="border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {confirmDelete ? (
             <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-bold text-content">Delete this entry?</span>
+              <span className="text-sm font-semibold text-content">Delete this entry?</span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setConfirmDelete(false)}
-                  className="rounded-full bg-surface-2 px-4 py-2 text-sm font-bold text-soft transition active:scale-95"
+                  className="rounded-full bg-surface-2 px-4 py-2 text-sm font-semibold text-soft transition active:scale-95"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => onDelete(entry.id)}
-                  className="rounded-full bg-mood-rough px-4 py-2 text-sm font-bold text-white transition active:scale-95"
+                  className="rounded-full bg-mood-rough px-4 py-2 text-sm font-semibold text-white transition active:scale-95"
                 >
                   Delete
                 </button>
@@ -268,7 +268,7 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
             <div className="flex gap-2">
               <button
                 onClick={startEdit}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-surface-2 py-3 text-sm font-bold text-content transition active:scale-95"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-surface-2 py-3 text-sm font-semibold text-content transition active:scale-95"
               >
                 <Pencil size={16} aria-hidden="true" /> Edit
               </button>

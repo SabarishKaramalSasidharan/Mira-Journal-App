@@ -65,12 +65,12 @@ export default function SuccessMoment({
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft">
               <Mascot size={34} mood={expression} decorative />
             </div>
-            <span className="text-xs font-extrabold uppercase tracking-wide text-mute">
+            <span className="text-xs font-semibold uppercase tracking-wide text-mute">
               Mira heard
             </span>
           </div>
 
-          <blockquote className="mt-3 font-display text-lg font-bold leading-snug text-content">
+          <blockquote className="mt-3 font-display text-lg font-semibold leading-snug text-content">
             &ldquo;{summary}&rdquo;
           </blockquote>
 
@@ -79,7 +79,7 @@ export default function SuccessMoment({
               {themes.map((t) => (
                 <span
                   key={t}
-                  className="rounded-full bg-surface-2 px-3 py-1 text-xs font-bold text-soft"
+                  className="rounded-full bg-surface-2 px-3 py-1 text-xs font-semibold text-soft"
                 >
                   {t}
                 </span>
@@ -88,7 +88,7 @@ export default function SuccessMoment({
           )}
 
           <p className="mt-3 text-sm font-medium text-soft">{moodLine}</p>
-          <p className="mt-1 text-xs font-bold text-mute">{streakLine}</p>
+          <p className="mt-1 text-xs font-semibold text-mute">{streakLine}</p>
 
           <div className="mt-4 flex items-center gap-2">
             <Button size="md" className="flex-1" onClick={onDone}>
@@ -100,7 +100,7 @@ export default function SuccessMoment({
           </div>
           <button
             onClick={onWriteAnother}
-            className="mt-2 w-full text-center text-xs font-bold text-mute transition hover:text-soft"
+            className="mt-2 w-full text-center text-xs font-semibold text-mute transition hover:text-soft"
           >
             Write another
           </button>
@@ -202,7 +202,7 @@ function MilestoneMoment({
           <Mascot size={64} mood="joy" decorative />
         </div>
 
-        <h2 id={headlineId} className="font-display text-2xl font-bold text-content">
+        <h2 id={headlineId} className="font-display text-2xl font-semibold text-content">
           {headline}
         </h2>
 
@@ -213,7 +213,7 @@ function MilestoneMoment({
           {stats.days.map((d, i) => (
             <div key={i} className="flex flex-col items-center gap-1.5">
               <span
-                className={`grid h-7 w-7 place-items-center rounded-full text-xs font-bold ${
+                className={`grid h-7 w-7 place-items-center rounded-full text-xs font-semibold ${
                   d.hasEntry
                     ? 'bg-accent text-on-accent'
                     : d.isToday
@@ -223,7 +223,7 @@ function MilestoneMoment({
               >
                 {d.hasEntry ? '\u2713' : ''}
               </span>
-              <span className="text-[10px] font-bold text-mute">{d.label}</span>
+              <span className="text-[10px] font-semibold text-mute">{d.label}</span>
             </div>
           ))}
         </div>

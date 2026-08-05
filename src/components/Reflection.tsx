@@ -35,7 +35,7 @@ export default function Reflection({ entries, onSelectTheme }: Props) {
 
   return (
     <div className="no-scrollbar h-full overflow-y-auto px-5 py-6">
-      <h2 className="mb-1 font-display text-2xl font-bold text-content">Your reflection</h2>
+      <h2 className="mb-1 font-display text-2xl font-semibold text-content">Your reflection</h2>
       <p className="mb-6 font-medium text-soft">The mirror — what your entries are quietly telling you.</p>
 
       {r.entryCount === 0 ? (
@@ -71,10 +71,10 @@ function InsightCard({ loading, text }: { loading: boolean; text: string }) {
         <Mascot size={28} decorative />
       </div>
       <div>
-        <div className="mb-0.5 text-xs font-extrabold uppercase tracking-wide text-accent-text">
+        <div className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-accent-text">
           The pattern
         </div>
-        <div className="font-semibold leading-relaxed text-content">
+        <div className="font-medium leading-relaxed text-content">
           {loading ? <span className="text-mute">Reflecting…</span> : text}
         </div>
       </div>

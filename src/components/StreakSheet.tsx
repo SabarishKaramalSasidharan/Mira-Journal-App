@@ -67,20 +67,20 @@ export default function StreakSheet({ stats, onClose }: Props) {
           >
             <Flame size={40} className="text-flame" aria-hidden="true" />
           </div>
-          <div className="font-display text-5xl font-bold text-content">
+          <div className="font-display text-5xl font-medium text-content">
             {current}
             <span className="sr-only"> day streak</span>
           </div>
-          <div className="mt-0.5 text-sm font-bold text-soft">
+          <div className="mt-0.5 text-sm font-medium text-soft">
             day{current === 1 ? '' : 's'} in a row
           </div>
-          <h2 className="mt-3 font-display text-lg font-bold text-content">{headline}</h2>
+          <h2 className="mt-3 font-display text-lg font-semibold text-content">{headline}</h2>
           <p className="mt-0.5 max-w-[16rem] text-sm font-medium text-soft">{sub}</p>
         </div>
 
         {/* Last 7 days */}
         <div className="mb-3 rounded-2xl bg-surface-2 p-4">
-          <div className="mb-3 text-xs font-extrabold uppercase tracking-wide text-mute">
+          <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-mute">
             Last 7 days
           </div>
           <div className="flex justify-between">
@@ -98,7 +98,7 @@ export default function StreakSheet({ stats, onClose }: Props) {
                     <span className="h-1.5 w-1.5 rounded-full bg-border" aria-hidden="true" />
                   )}
                 </div>
-                <span className="text-[11px] font-bold text-mute">{d.label}</span>
+                <span className="text-[11px] font-semibold text-mute">{d.label}</span>
               </div>
             ))}
           </div>
@@ -107,12 +107,12 @@ export default function StreakSheet({ stats, onClose }: Props) {
         {/* Best + next milestone */}
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-surface-2 p-4">
-            <div className="font-display text-2xl font-bold text-content">{best}</div>
-            <div className="mt-0.5 text-xs font-semibold text-mute">personal best</div>
+            <div className="font-display text-2xl font-semibold text-content">{best}</div>
+            <div className="mt-0.5 text-xs font-medium text-mute">personal best</div>
           </div>
           <div className="rounded-2xl bg-surface-2 p-4">
-            <div className="font-display text-2xl font-bold text-content">{target}</div>
-            <div className="mt-0.5 text-xs font-semibold text-mute">next milestone</div>
+            <div className="font-display text-2xl font-semibold text-content">{target}</div>
+            <div className="mt-0.5 text-xs font-medium text-mute">next milestone</div>
           </div>
         </div>
         <div className="mt-3">
@@ -125,7 +125,7 @@ export default function StreakSheet({ stats, onClose }: Props) {
               }}
             />
           </div>
-          <p className="mt-2 text-center text-xs font-semibold text-mute">
+          <p className="mt-2 text-center text-xs font-medium text-mute">
             {current >= target
               ? 'Milestone reached — incredible.'
               : `${target - current} more day${target - current === 1 ? '' : 's'} to ${target}`}

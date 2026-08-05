@@ -224,7 +224,7 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
             onClick={() => setPickerOpen((o) => !o)}
             aria-haspopup="dialog"
             aria-expanded={pickerOpen}
-            className="flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 text-sm font-bold text-content transition active:scale-95"
+            className="flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 text-sm font-semibold text-content transition active:scale-95"
             aria-label={`Journaling for ${dateLabel(selectedDate)}. Tap to pick a date.`}
           >
             <Calendar size={15} aria-hidden="true" />
@@ -258,7 +258,7 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
             key={savedTick}
             role="status"
             aria-live="polite"
-            className="animate-fade-up absolute right-4 flex items-center gap-1 text-xs font-bold text-mute"
+            className="animate-fade-up absolute right-4 flex items-center gap-1 text-xs font-semibold text-mute"
           >
             <Check size={13} aria-hidden="true" /> Auto-saved
           </span>
@@ -279,7 +279,7 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
         <div className="px-4 pt-1">
           <div className="mb-1.5 px-1">
             <span
-              className={`animate-rise text-xs font-bold ${!hasWritten ? 'text-accent-text' : 'text-soft'}`}
+              className={`animate-rise text-xs font-semibold ${!hasWritten ? 'text-accent-text' : 'text-soft'}`}
             >
               {moodLabel}
             </span>
@@ -304,13 +304,13 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
       {/* Composer */}
       <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
         {listening && (
-          <div className="mb-2 px-2 text-sm font-bold text-accent-text">
+          <div className="mb-2 px-2 text-sm font-semibold text-accent-text">
             <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-flame align-middle" />
             listening… {interim && <span className="font-medium text-mute">{interim}</span>}
           </div>
         )}
         {speechError && (
-          <div role="alert" className="mb-2 px-2 text-sm font-bold text-flame">
+          <div role="alert" className="mb-2 px-2 text-sm font-semibold text-flame">
             {speechError}
           </div>
         )}
@@ -353,7 +353,7 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
             <button
               onClick={finish}
               aria-label="Finish entry"
-              className="btn3d flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-accent px-4 text-sm font-bold text-on-accent"
+              className="btn3d flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-accent px-4 text-sm font-semibold text-on-accent"
               style={{ boxShadow: '0 4px 0 0 var(--accent-strong)' }}
             >
               <Check size={18} aria-hidden="true" /> Finish
@@ -381,7 +381,7 @@ function Bubble({ turn, miraMood }: { turn: Turn; miraMood: MascotMood }) {
   if (turn.kind === 'mood') {
     return (
       <div className="flex animate-pop justify-end">
-        <div className="rounded-full bg-accent px-4 py-2 text-sm font-bold text-on-accent shadow-sm">
+        <div className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-on-accent shadow-sm">
           {turn.text}
         </div>
       </div>

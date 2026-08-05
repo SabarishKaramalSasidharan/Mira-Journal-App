@@ -70,7 +70,7 @@ export function MoodTrend({ entries }: { entries: Entry[] }) {
   return (
     <div className="rounded-2xl bg-surface p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="text-xs font-extrabold uppercase tracking-wide text-mute">Mood</div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-mute">Mood</div>
         {/* Range filter */}
         <div className="flex gap-0.5 rounded-lg bg-surface-2 p-0.5" role="group" aria-label="Time range">
           {RANGES.map((r) => (
@@ -78,7 +78,7 @@ export function MoodTrend({ entries }: { entries: Entry[] }) {
               key={String(r.key)}
               onClick={() => pickRange(r.key)}
               aria-pressed={range === r.key}
-              className={`rounded-md px-2.5 py-1 text-xs font-bold transition ${
+              className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
                 range === r.key
                   ? 'bg-surface text-content shadow-sm'
                   : 'text-mute hover:text-soft'
@@ -161,19 +161,19 @@ export function MoodTrend({ entries }: { entries: Entry[] }) {
           {/* Summary row + tap-to-inspect caption */}
           <div className="mt-1 border-t border-border pt-3">
             {sel != null && points[sel]?.score != null ? (
-              <p className="flex items-center gap-2 text-sm font-semibold text-content">
+              <p className="flex items-center gap-2 text-sm font-medium text-content">
                 <span className="text-base">{emojiFor(moodForScore(points[sel].score as number))}</span>
                 {points[sel].full} · felt {labelForScore(points[sel].score as number).toLowerCase()}
               </p>
             ) : (
               <div className="flex items-center justify-between gap-3">
-                <p className="flex items-center gap-2 text-sm font-semibold text-content">
+                <p className="flex items-center gap-2 text-sm font-medium text-content">
                   {avg != null && (
                     <span className="text-base">{emojiFor(moodForScore(avg))}</span>
                   )}
                   {avg != null ? moodSentiment(avg) : 'Tap a point to see that day.'}
                 </p>
-                <span className="shrink-0 text-xs font-bold text-mute">{loggedLabel}</span>
+                <span className="shrink-0 text-xs font-semibold text-mute">{loggedLabel}</span>
               </div>
             )}
           </div>
@@ -199,7 +199,7 @@ export function ThemeBars({
 
   return (
     <div className="rounded-2xl bg-surface p-4 shadow-sm">
-      <div className="mb-1 text-xs font-extrabold uppercase tracking-wide text-mute">
+      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-mute">
         What kept coming up
       </div>
       <p className="mb-3 text-xs font-medium text-mute">Tap a theme to read those entries.</p>
@@ -213,7 +213,7 @@ export function ThemeBars({
               disabled={!onSelect}
               className="flex w-full items-center gap-3 rounded-lg px-1.5 py-1.5 text-left transition hover:bg-surface-2 active:scale-[0.99] disabled:pointer-events-none"
             >
-              <span className="w-24 shrink-0 truncate text-sm font-bold text-content">#{d.theme}</span>
+              <span className="w-24 shrink-0 truncate text-sm font-semibold text-content">#{d.theme}</span>
               <div className="h-3 flex-1 overflow-hidden rounded-full bg-surface-2">
                 <div
                   className="h-full rounded-full transition-all"
@@ -223,7 +223,7 @@ export function ThemeBars({
                   }}
                 />
               </div>
-              <span className="w-4 text-right text-xs font-bold text-mute">{d.count}</span>
+              <span className="w-4 text-right text-xs font-semibold text-mute">{d.count}</span>
               {onSelect && <ChevronRight size={15} className="text-mute" aria-hidden="true" />}
             </button>
           ))}
@@ -235,7 +235,7 @@ export function ThemeBars({
               key={d.theme}
               onClick={() => onSelect?.(d.theme)}
               disabled={!onSelect}
-              className="flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1.5 text-sm font-bold text-accent-text transition hover:brightness-95 active:scale-95 disabled:pointer-events-none"
+              className="flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent-text transition hover:brightness-95 active:scale-95 disabled:pointer-events-none"
             >
               #{d.theme}
               {d.count > 1 && <span className="text-xs opacity-70">×{d.count}</span>}

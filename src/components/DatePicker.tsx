@@ -75,7 +75,7 @@ export default function DatePicker({ value, max, onSelect, onClose }: Props) {
           >
             <ChevronLeft size={18} aria-hidden="true" />
           </button>
-          <div className="text-sm font-extrabold text-content">
+          <div className="text-sm font-semibold text-content">
             {MONTHS[month]} {year}
           </div>
           <button
@@ -91,7 +91,7 @@ export default function DatePicker({ value, max, onSelect, onClose }: Props) {
         {/* Weekday labels */}
         <div className="mb-1 grid grid-cols-7 gap-1">
           {WEEKDAYS.map((w, i) => (
-            <div key={i} className="grid h-7 place-items-center text-[11px] font-bold text-mute">
+            <div key={i} className="grid h-7 place-items-center text-[11px] font-semibold text-mute">
               {w}
             </div>
           ))}
@@ -116,7 +116,7 @@ export default function DatePicker({ value, max, onSelect, onClose }: Props) {
                   year: 'numeric',
                 })}
                 aria-current={isSelected ? 'date' : undefined}
-                className={`relative grid h-9 w-9 place-items-center rounded-full text-sm font-bold transition active:scale-90 disabled:cursor-not-allowed disabled:opacity-25 ${
+                className={`relative grid h-9 w-9 place-items-center rounded-full text-sm font-semibold transition active:scale-90 disabled:cursor-not-allowed disabled:opacity-25 ${
                   isSelected
                     ? 'bg-accent text-on-accent shadow-sm'
                     : 'text-content hover:bg-surface-2'

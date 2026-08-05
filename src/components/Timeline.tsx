@@ -135,7 +135,7 @@ function MonthFilter({
   const years = [...byYear.keys()]
 
   const itemClass = (active: boolean) =>
-    `flex w-full items-center rounded-md px-3 py-2 text-left text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${
+    `flex w-full items-center rounded-md px-3 py-2 text-left text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${
       active ? 'bg-accent text-on-accent' : 'text-content hover:bg-surface-2'
     }`
 
@@ -146,7 +146,7 @@ function MonthFilter({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Filter by month"
-        className="flex items-center gap-1.5 rounded-lg bg-surface px-3 py-1.5 text-sm font-bold text-soft shadow-sm transition hover:text-content active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+        className="flex items-center gap-1.5 rounded-lg bg-surface px-3 py-1.5 text-sm font-semibold text-soft shadow-sm transition hover:text-content active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
       >
         <span>{value ? monthKeyLabel(value) : 'All months'}</span>
         <ChevronDown
@@ -184,7 +184,7 @@ function MonthFilter({
             </button>
             {years.map((year) => (
               <div key={year}>
-                <div className="px-3 pt-2 pb-1 text-[11px] font-bold text-mute">{year}</div>
+                <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-mute">{year}</div>
                 {byYear.get(year)!.map((g) => (
                   <button
                     key={g.key}
@@ -224,7 +224,7 @@ export default function Timeline({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
         <Mascot size={88} className="animate-bob" mood="calm" decorative />
-        <h2 className="font-display text-2xl font-bold text-content">Nothing here yet</h2>
+        <h2 className="font-display text-2xl font-semibold text-content">Nothing here yet</h2>
         <p className="max-w-xs font-medium text-soft">
           Your entries live here. Start your first one — it takes less than a minute.
         </p>
@@ -249,20 +249,20 @@ export default function Timeline({
         {filterTheme ? (
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <div className="text-xs font-bold text-mute">
+              <div className="text-xs font-semibold text-mute">
                 {shown.length} {shown.length === 1 ? 'entry' : 'entries'}
               </div>
-              <h2 className="truncate font-display text-2xl font-bold text-content">#{filterTheme}</h2>
+              <h2 className="truncate font-display text-2xl font-semibold text-content">#{filterTheme}</h2>
             </div>
             <button
               onClick={onClearFilter}
-              className="flex shrink-0 items-center gap-1 rounded-full bg-surface px-3 py-1.5 text-sm font-bold text-soft shadow-sm transition active:scale-95"
+              className="flex shrink-0 items-center gap-1 rounded-full bg-surface px-3 py-1.5 text-sm font-semibold text-soft shadow-sm transition active:scale-95"
             >
               <X size={15} aria-hidden="true" /> Clear
             </button>
           </div>
         ) : (
-          <h2 className="mb-3 font-display text-2xl font-bold text-content">Your journal</h2>
+          <h2 className="mb-3 font-display text-2xl font-semibold text-content">Your journal</h2>
         )}
 
         <div className="flex items-center gap-2 rounded-lg bg-surface px-3 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-accent/50">
@@ -289,7 +289,7 @@ export default function Timeline({
           <button
             onClick={() => setMoodFilter(null)}
             aria-pressed={moodFilter === null}
-            className={`rounded-full px-3 py-1 text-sm font-bold transition active:scale-95 ${
+            className={`rounded-full px-3 py-1 text-sm font-semibold transition active:scale-95 ${
               moodFilter === null ? 'bg-accent text-on-accent' : 'bg-surface text-soft shadow-sm'
             }`}
           >
@@ -330,8 +330,8 @@ export default function Timeline({
           groups.map((g) => (
             <section key={g.key}>
               <div className="sticky top-0 z-10 flex items-baseline justify-between border-b border-border bg-bg px-5 py-2">
-                <h3 className="font-display text-sm font-bold text-content">{g.label}</h3>
-                <span className="text-xs font-bold text-mute">
+                <h3 className="font-display text-sm font-semibold text-content">{g.label}</h3>
+                <span className="text-xs font-semibold text-mute">
                   {g.entries.length} {g.entries.length === 1 ? 'entry' : 'entries'}
                 </span>
               </div>
@@ -354,7 +354,7 @@ export default function Timeline({
                     }`}
                   >
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-xs font-bold text-mute">{when(e.createdAt)}</span>
+                      <span className="text-xs font-semibold text-mute">{when(e.createdAt)}</span>
                       <span
                         className="grid h-8 w-8 place-items-center rounded-xl text-lg"
                         style={{ background: e.mood ? MOOD_VAR[e.mood] : 'var(--surface-2)' }}
@@ -373,7 +373,7 @@ export default function Timeline({
                               onSelectTheme?.(t)
                             }}
                             disabled={!onSelectTheme}
-                            className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition active:scale-95 disabled:pointer-events-none ${
+                            className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition active:scale-95 disabled:pointer-events-none ${
                               t === filterTheme
                                 ? 'bg-accent text-on-accent'
                                 : 'bg-accent-soft text-accent-text'

@@ -36,7 +36,7 @@ export default function WeeklyRecap({ entries, onSelectTheme }: Props) {
         aria-labelledby="recap-heading"
         className="rounded-2xl bg-accent-soft p-5 shadow-sm"
       >
-        <h3 id="recap-heading" className="font-display text-lg font-bold text-content">
+        <h3 id="recap-heading" className="font-display text-lg font-semibold text-content">
           Your week, gently
         </h3>
         <p className="mt-1.5 font-medium leading-relaxed text-soft">
@@ -72,21 +72,21 @@ export default function WeeklyRecap({ entries, onSelectTheme }: Props) {
 
   return (
     <section aria-labelledby="recap-heading" className="rounded-2xl bg-surface p-5 shadow-sm">
-      <h3 id="recap-heading" className="font-display text-lg font-bold text-content">
+      <h3 id="recap-heading" className="font-display text-lg font-semibold text-content">
         Your week, gently
       </h3>
-      <p className="mt-0.5 text-xs font-semibold text-mute">A soft look at your last 7 days.</p>
+      <p className="mt-0.5 text-xs font-medium text-mute">A soft look at your last 7 days.</p>
 
       <dl className="mt-4 grid grid-cols-2 gap-3">
         <div className="rounded-lg bg-surface-2 p-3">
-          <dt className="text-xs font-semibold text-mute">
+          <dt className="text-xs font-medium text-mute">
             {count === 1 ? 'Entry this week' : 'Entries this week'}
           </dt>
-          <dd className="mt-1 font-display text-2xl font-bold text-content">{count}</dd>
+          <dd className="mt-1 font-display text-2xl font-medium text-content">{count}</dd>
         </div>
         <div className="rounded-lg bg-surface-2 p-3">
-          <dt className="text-xs font-semibold text-mute">Average mood</dt>
-          <dd className="mt-1 flex items-center gap-1.5 font-display text-2xl font-bold text-content">
+          <dt className="text-xs font-medium text-mute">Average mood</dt>
+          <dd className="mt-1 flex items-center gap-1.5 font-display text-2xl font-medium text-content">
             {avgMood ? (
               <>
                 <span aria-hidden="true" className="text-xl">
@@ -95,7 +95,7 @@ export default function WeeklyRecap({ entries, onSelectTheme }: Props) {
                 <span>{SENTIMENT_WORD[avgMood]}</span>
               </>
             ) : (
-              <span className="text-base font-semibold text-mute">Not logged yet</span>
+              <span className="text-base font-medium text-mute">Not logged yet</span>
             )}
           </dd>
         </div>
@@ -103,17 +103,17 @@ export default function WeeklyRecap({ entries, onSelectTheme }: Props) {
 
       {topTheme && (
         <div className="mt-4">
-          <div className="mb-1.5 text-xs font-semibold text-mute">Top theme</div>
+          <div className="mb-1.5 text-xs font-medium text-mute">Top theme</div>
           {onSelectTheme ? (
             <button
               onClick={() => onSelectTheme(topTheme)}
               aria-label={`Show journal entries about ${topTheme}`}
-              className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1.5 text-sm font-bold text-accent-text transition hover:brightness-95 active:scale-95"
+              className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent-text transition hover:brightness-95 active:scale-95"
             >
               #{topTheme}
             </button>
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1.5 text-sm font-bold text-accent-text">
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent-text">
               #{topTheme}
             </span>
           )}
@@ -122,10 +122,10 @@ export default function WeeklyRecap({ entries, onSelectTheme }: Props) {
 
       {winQuote && (
         <figure className="mt-4 rounded-lg bg-surface-2 p-3">
-          <figcaption className="mb-1 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-accent-text">
+          <figcaption className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent-text">
             <span aria-hidden="true">✨</span>A bright spot
           </figcaption>
-          <blockquote className="font-semibold leading-relaxed text-content">
+          <blockquote className="font-medium leading-relaxed text-content">
             “{winQuote}”
           </blockquote>
         </figure>

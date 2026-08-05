@@ -57,7 +57,7 @@ export default function Settings({ initial, themeMode, onThemeChange, onClose, o
   return (
     <div className="absolute inset-0 z-20 flex flex-col bg-bg">
       <header className="flex items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))]">
-        <h2 className="pt-3 font-display text-2xl font-bold text-content">Settings</h2>
+        <h2 className="pt-3 font-display text-2xl font-semibold text-content">Settings</h2>
         <button
           onClick={onClose}
           className="grid h-9 w-9 place-items-center rounded-full bg-surface text-content shadow-sm transition active:scale-90"
@@ -70,14 +70,14 @@ export default function Settings({ initial, themeMode, onThemeChange, onClose, o
       <div className="no-scrollbar flex-1 space-y-6 overflow-y-auto px-5 py-6">
         {/* Appearance */}
         <section>
-          <h3 className="mb-2 font-display text-sm font-bold text-content">Appearance</h3>
+          <h3 className="mb-2 font-display text-sm font-semibold text-content">Appearance</h3>
           <div className="flex gap-1.5 rounded-lg bg-surface-2 p-1.5">
             {(['light', 'dark', 'system'] as ThemeMode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => onThemeChange(m)}
                 aria-pressed={themeMode === m}
-                className={`flex-1 rounded-md py-2 text-sm font-bold capitalize transition ${
+                className={`flex-1 rounded-md py-2 text-sm font-semibold capitalize transition ${
                   themeMode === m ? 'bg-surface text-accent-text shadow-sm' : 'text-soft'
                 }`}
               >
@@ -89,7 +89,7 @@ export default function Settings({ initial, themeMode, onThemeChange, onClose, o
 
         {/* Conversation engine */}
         <section>
-          <h3 className="mb-1 font-display text-sm font-bold text-content">Conversation engine</h3>
+          <h3 className="mb-1 font-display text-sm font-semibold text-content">Conversation engine</h3>
           <p className="mb-3 text-xs font-medium text-mute">
             Mira works offline for free. For richer conversations, connect a free LLM —
             your key stays on this device.
@@ -154,7 +154,7 @@ export default function Settings({ initial, themeMode, onThemeChange, onClose, o
                 href={preset.keyUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs font-bold text-accent-text underline"
+                className="text-xs font-semibold text-accent-text underline"
               >
                 Get a free key →
               </a>
@@ -164,7 +164,7 @@ export default function Settings({ initial, themeMode, onThemeChange, onClose, o
             </div>
 
             {testMsg && (
-              <p className={`text-xs font-bold ${testMsg.startsWith('✓') ? 'text-mood-good' : 'text-flame'}`}>
+              <p className={`text-xs font-semibold ${testMsg.startsWith('✓') ? 'text-mood-good' : 'text-flame'}`}>
                 {testMsg}
               </p>
             )}
@@ -227,7 +227,7 @@ function Option({
         >
           {active && <span className="h-2 w-2 rounded-full bg-accent" />}
         </span>
-        <span className="text-sm font-bold text-content">{title}</span>
+        <span className="text-sm font-semibold text-content">{title}</span>
       </div>
       <p className="mt-1 pl-6 text-xs font-medium text-mute">{subtitle}</p>
     </button>
@@ -237,7 +237,7 @@ function Option({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-bold text-mute">{label}</span>
+      <span className="mb-1 block text-xs font-semibold text-mute">{label}</span>
       {children}
     </label>
   )

@@ -1,5 +1,4 @@
 import { useEffect, useId, useRef } from 'react'
-import { Flame } from 'lucide-react'
 import type { StreakStats } from '../lib/storage'
 import type { Entry } from '../types'
 import { MOOD_SCORE } from '../lib/ai'
@@ -36,7 +35,10 @@ export default function SuccessMoment({
 }: Props) {
   // The core payoff: reflect the entry back. Fall back to a warm generic line.
   const summary = entry.summary?.trim() || 'Thanks for checking in.'
-  const themes = entry.themes.slice(0, 3)
+  // Drop any theme that just repeats the summary text (avoids "thanks" / "thanks").
+  const themes = entry.themes
+    .filter((t) => t.trim().toLowerCase() !== summary.toLowerCase())
+    .slice(0, 3)
 
   // Mood-aware, but the WORDS carry meaning — never color/expression alone.
   const score = entry.mood ? MOOD_SCORE[entry.mood] : 3
@@ -109,41 +111,32 @@ export default function SuccessMoment({
 
   return (
     <MilestoneMoment
-      summary={summary}
-      themes={themes}
       moodLine={moodLine}
       stats={stats}
       headline={headline ?? 'Nice work.'}
       trigger={trigger}
       onDone={onDone}
-      onWriteAnother={onWriteAnother}
       onSeeJournal={onSeeJournal}
     />
   )
 }
 
 interface MilestoneProps {
-  summary: string
-  themes: string[]
   moodLine: string
   stats: StreakStats
   headline: string
   trigger: HTMLElement | null
   onDone: () => void
-  onWriteAnother: () => void
   onSeeJournal: () => void
 }
 
 /** The earned celebration — a real modal: focus trap, Esc, confetti, mascot joy. */
 function MilestoneMoment({
-  summary,
-  themes,
   moodLine,
   stats,
   headline,
   trigger,
   onDone,
-  onWriteAnother,
   onSeeJournal,
 }: MilestoneProps) {
   const headlineId = useId()
@@ -213,34 +206,10 @@ function MilestoneMoment({
           {headline}
         </h2>
 
-        {/* Reflect-back summary — even celebrations carry meaning. */}
-        <blockquote className="mx-auto mt-2 max-w-[17rem] text-sm font-medium leading-snug text-soft">
-          &ldquo;{summary}&rdquo;
-        </blockquote>
+        <p className="mt-1 text-sm font-medium text-soft">{moodLine}</p>
 
-        {themes.length > 0 && (
-          <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-            {themes.map((t) => (
-              <span
-                key={t}
-                className="rounded-full bg-surface-2 px-3 py-1 text-xs font-bold text-soft"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Flame streak pill */}
-        <div className="mx-auto mt-4 flex w-fit items-center gap-2 rounded-full bg-surface-2 px-4 py-2">
-          <Flame size={18} className="text-flame" aria-hidden="true" />
-          <span className="font-display font-bold text-content">
-            {stats.current} day{stats.current === 1 ? '' : 's'} in a row
-          </span>
-        </div>
-
-        {/* Last 7 days */}
-        <div className="mt-4 flex justify-between px-1">
+        {/* Last 7 days — the visual proof of the streak (the headline already names it). */}
+        <div className="mt-5 flex justify-between px-1">
           {stats.days.map((d, i) => (
             <div key={i} className="flex flex-col items-center gap-1.5">
               <span
@@ -259,9 +228,7 @@ function MilestoneMoment({
           ))}
         </div>
 
-        <p className="mt-4 text-sm font-medium text-soft">{moodLine}</p>
-
-        <div className="mt-5 flex flex-col gap-2">
+        <div className="mt-6 flex flex-col gap-2">
           <Button size="lg" onClick={onDone}>
             Done
           </Button>
@@ -269,12 +236,6 @@ function MilestoneMoment({
             See in journal
           </Button>
         </div>
-        <button
-          onClick={onWriteAnother}
-          className="mt-2 w-full text-center text-xs font-bold text-mute transition hover:text-soft"
-        >
-          Write another
-        </button>
       </div>
 
       {/* Confetti rains over the whole card (suppressed under reduced motion). */}

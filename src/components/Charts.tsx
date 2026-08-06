@@ -3,7 +3,7 @@ import { ChevronRight } from 'lucide-react'
 import { MOODS, type Mood } from '../types'
 import type { Entry } from '../types'
 import { moodSeriesRange, type MoodRange, type ThemeCount } from '../lib/ai'
-import { emotionCounts } from '../lib/emotions'
+import { emotionCounts, GROUP_COLORS } from '../lib/emotions'
 import { EmotionFace } from './MoodFace'
 
 const SCORE_MOOD: Mood[] = ['rough', 'low', 'okay', 'good', 'great']
@@ -212,7 +212,10 @@ export function EmotionBreakdown({ entries }: { entries: Entry[] }) {
             <div className="h-3 flex-1 overflow-hidden rounded-full bg-surface-2">
               <div
                 className="h-full rounded-full transition-all"
-                style={{ width: `${12 + (d.count / maxCount) * 88}%`, background: d.emotion.color }}
+                style={{
+                  width: `${12 + (d.count / maxCount) * 88}%`,
+                  background: GROUP_COLORS[d.emotion.group].bottom,
+                }}
               />
             </div>
             <span className="w-4 text-right text-xs font-semibold text-mute">{d.count}</span>

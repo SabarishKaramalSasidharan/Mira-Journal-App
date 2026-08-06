@@ -18,10 +18,11 @@ import { dayContext, getEmotionFollowUp, getFollowUp, getMoodOpener, openingProm
 import { useSpeech } from '../lib/useSpeech'
 import Mascot from './Mascot'
 import { MoodFace, EmotionFace } from './MoodFace'
-import { EmotionPicker } from './EmotionPicker'
+import { EmotionPicker, EmotionGroupChips } from './EmotionPicker'
 import { getEmotion } from '../lib/emotions'
 import { moodToExpression, type MascotMood } from '../lib/mascotMood'
 import type { SelectorStyle } from '../lib/selectorStyle'
+import type { FeelingEntry } from '../lib/feelingEntry'
 import DatePicker from './DatePicker'
 import '../styles/voice.css'
 
@@ -46,7 +47,14 @@ interface Props {
   onFinish: (entry: Entry) => void
   /** Which mood selector to render: the new Hybrid "faces" or classic "weather". */
   selectorStyle: SelectorStyle
+  /** Where the optional feeling tag is offered (Labs experiment). Only affects
+   *  the "faces" selector; the selection outcome is identical across modes. */
+  feelingEntry: FeelingEntry
 }
+
+// Option B — a small quick-reply set spanning both groups, drawn from the
+// emotion catalog (order matches the exploration canvas panel B).
+const QUICK_FEELINGS = ['calm', 'content', 'anxious', 'sad', 'gratitude']
 
 const DAY = 86400000
 const startOfDay = (d: Date) => {
@@ -69,7 +77,7 @@ function dateLabel(d: Date): string {
   })
 }
 
-export default function Capture({ onAutoSave, onFinish, selectorStyle }: Props) {
+export default function Capture({ onAutoSave, onFinish, selectorStyle, feelingEntry }: Props) {
   const [prompt] = useState(openingPrompt)
   const [turns, setTurns] = useState<Turn[]>([{ role: 'mira', text: prompt }])
   const [draft, setDraft] = useState('')
@@ -81,6 +89,12 @@ export default function Capture({ onAutoSave, onFinish, selectorStyle }: Props) 
   // One feeling per conversation: once picked, the "Add a feeling?" block
   // collapses (mirrors `moodOpened` hiding the 1–5 ladder after a valence tap).
   const [emotionOpened, setEmotionOpened] = useState(false)
+  // Option B ("conversational"): once the mood opener lands, Mira offers the
+  // feeling in-chat with a row of quick-reply chips. This flag drives that
+  // ephemeral invitation; it clears when a chip is tapped or the user types.
+  const [inviteActive, setInviteActive] = useState(false)
+  // Offer the in-chat invitation at most once per conversation.
+  const inviteOfferedRef = useRef(false)
   const [thinking, setThinking] = useState(false)
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
 
@@ -119,6 +133,8 @@ export default function Capture({ onAutoSave, onFinish, selectorStyle }: Props) 
     setEmotion(null)
     setMoodOpened(false)
     setEmotionOpened(false)
+    setInviteActive(false)
+    inviteOfferedRef.current = false
     setThinking(false)
     // …and drop this entry's identity so the new date persists as its own entry.
     entryId.current = null
@@ -280,7 +296,7 @@ export default function Capture({ onAutoSave, onFinish, selectorStyle }: Props) 
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [turns, thinking])
+  }, [turns, thinking, inviteActive])
 
   const autoGrow = (el: HTMLTextAreaElement) => {
     el.style.height = 'auto'
@@ -301,6 +317,12 @@ export default function Capture({ onAutoSave, onFinish, selectorStyle }: Props) 
     const q = await getMoodOpener(m, dayContext(selectedDate))
     setThinking(false)
     setTurns((t) => [...t, { role: 'mira', text: q }])
+    // Option B — right after the opener lands, Mira invites the feeling in the
+    // chat (once). Nothing renders near the composer in this mode.
+    if (feelingEntry === 'conversational' && !inviteOfferedRef.current && !emotionOpened) {
+      inviteOfferedRef.current = true
+      setInviteActive(true)
+    }
     // No focus here: tapping a mood shouldn't force the keyboard open. People
     // can read Mira's reply first, then tap the box when they're ready to type.
   }
@@ -318,6 +340,8 @@ export default function Capture({ onAutoSave, onFinish, selectorStyle }: Props) 
     if (!meta) return
     setEmotion(id)
     setEmotionOpened(true)
+    // Option B: picking a chip retires the in-chat invitation.
+    setInviteActive(false)
     // The tapped feeling shows up as your message…
     const next: Turn[] = [...turns, { role: 'you', kind: 'emotion', emotion: id, text: meta.label }]
     setTurns(next)
@@ -332,6 +356,9 @@ export default function Capture({ onAutoSave, onFinish, selectorStyle }: Props) 
   const send = async () => {
     const text = draft.trim()
     if (!text || thinking) return
+    // Option B: if the user ignores the invitation and just writes, it quietly
+    // goes away (the quick-reply row disappears; nothing is posted).
+    if (inviteActive) setInviteActive(false)
     const next: Turn[] = [...turns, { role: 'you', text }]
     setTurns(next)
     setDraft('')
@@ -480,6 +507,17 @@ export default function Capture({ onAutoSave, onFinish, selectorStyle }: Props) 
           <Bubble key={i} turn={t} miraMood={miraExpression} />
         ))}
         {thinking && <Typing />}
+
+        {/* Option B — Mira's in-chat invitation + quick-reply feeling chips.
+            Ephemeral: it clears once a chip is tapped or the user writes, so it
+            never lingers and never pollutes the saved transcript. */}
+        {selectorStyle === 'faces' &&
+          feelingEntry === 'conversational' &&
+          inviteActive &&
+          !emotionOpened &&
+          !thinking && (
+            <EmotionInvite miraMood={miraExpression} onPick={selectEmotion} />
+          )}
       </div>
 
       {/* Mood selector. In "faces" (Hybrid) mode this is a two-step flow: the
@@ -487,51 +525,57 @@ export default function Capture({ onAutoSave, onFinish, selectorStyle }: Props) 
           mode it's the classic one-tap emoji scale. One entry = one valence, so
           the ladder collapses after a tap (same behavior in both styles). */}
       {selectorStyle === 'faces' ? (
-        // Hidden entirely once both steps are done (valence picked + feeling
-        // chosen or skipped by finishing) so no empty padding lingers.
-        (!moodOpened || !emotionOpened) && (
+        !moodOpened ? (
+          /* Step 1 — 1–5 mascot ladder (identical across all feeling modes) */
           <div className="px-4 pt-1">
-            {!moodOpened ? (
-              /* Step 1 — 1–5 mascot ladder */
-              <>
-                <div className="mb-1.5 px-1">
+            <div className="mb-1.5 px-1">
+              <span
+                className={`animate-rise text-xs font-semibold ${!hasWritten ? 'text-accent-text' : 'text-soft'}`}
+              >
+                {moodLabel}
+              </span>
+            </div>
+            <div className="grid grid-cols-5 gap-1.5">
+              {MOODS.map((m, i) => (
+                <button
+                  key={m.key}
+                  onClick={() => selectMood(m.key)}
+                  className="animate-rise flex flex-col items-center gap-1 rounded-2xl px-1 py-2 ring-1 ring-border transition-all active:scale-90"
+                  style={{ background: 'var(--surface-2)', animationDelay: `${i * 40}ms` }}
+                  title={m.label}
+                  aria-label={`${m.label} — rate your day ${i + 1} of 5`}
+                >
+                  <MoodFace mood={m.key} size={34} decorative className={!hasWritten ? '' : 'opacity-70'} />
                   <span
-                    className={`animate-rise text-xs font-semibold ${!hasWritten ? 'text-accent-text' : 'text-soft'}`}
+                    className={`text-[11px] font-semibold ${!hasWritten ? 'text-content' : 'text-mute'}`}
                   >
-                    {moodLabel}
+                    {m.label}
                   </span>
-                </div>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {MOODS.map((m, i) => (
-                    <button
-                      key={m.key}
-                      onClick={() => selectMood(m.key)}
-                      className="animate-rise flex flex-col items-center gap-1 rounded-2xl px-1 py-2 ring-1 ring-border transition-all active:scale-90"
-                      style={{ background: 'var(--surface-2)', animationDelay: `${i * 40}ms` }}
-                      title={m.label}
-                      aria-label={`${m.label} — rate your day ${i + 1} of 5`}
-                    >
-                      <MoodFace mood={m.key} size={34} decorative className={!hasWritten ? '' : 'opacity-70'} />
-                      <span
-                        className={`text-[11px] font-semibold ${!hasWritten ? 'text-content' : 'text-mute'}`}
-                      >
-                        {m.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : (
-              /* Step 2 — optional emotion tag (skippable). Collapses after a
-                 pick, one feeling per conversation. */
-              <div className="animate-rise">
-                <div className="mb-1.5 px-1">
-                  <span className="text-xs font-semibold text-soft">Add a feeling? (optional)</span>
-                </div>
-                <EmotionPicker value={emotion} onChange={selectEmotion} />
-              </div>
-            )}
+                </button>
+              ))}
+            </div>
           </div>
+        ) : (
+          /* Step 2 — optional emotion tag. WHERE it lives depends on the Labs
+             "Feeling entry point" setting; the outcome (selectEmotion) is shared.
+               • pill     → collapsed "＋ Add a feeling" picker (current default)
+               • moodstep → grouped chips folded into the mood step (Option C)
+               • conversational → nothing here (Mira invites it in the chat above) */
+          !emotionOpened &&
+          feelingEntry !== 'conversational' && (
+            <div className="px-4 pt-1">
+              {feelingEntry === 'moodstep' ? (
+                <MoodStepEmotion
+                  moodLabel={selectedLabel ?? null}
+                  value={emotion}
+                  onPick={selectEmotion}
+                  onSkip={() => setEmotionOpened(true)}
+                />
+              ) : (
+                <EmotionPicker value={emotion} onChange={selectEmotion} />
+              )}
+            </div>
+          )
         )
       ) : (
         !moodOpened && (
@@ -805,6 +849,92 @@ function Bubble({ turn, miraMood }: { turn: Turn; miraMood: MascotMood }) {
       >
         {turn.text}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Option B — Mira's in-chat invitation to name a feeling, with a horizontal row
+ * of quick-reply emotion chips (a small cross-group set from the catalog). It
+ * reads as part of the conversation: same Mira avatar + bubble, then chips
+ * aligned under it. Tapping a chip runs the shared `selectEmotion`, so it posts
+ * the emotion bubble, sets `Entry.emotion`, and fires `getEmotionFollowUp`
+ * exactly like the other entry points. Rendered only while the invitation is
+ * live, so it vanishes cleanly on pick or when the user types instead.
+ */
+function EmotionInvite({
+  miraMood,
+  onPick,
+}: {
+  miraMood: MascotMood
+  onPick: (id: string | null) => void
+}) {
+  return (
+    <div className="animate-fade-up space-y-2">
+      <div className="flex items-end justify-start gap-2">
+        <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent-soft">
+          <Mascot size={26} mood={miraMood} decorative />
+        </div>
+        <div className="max-w-[80%] rounded-2xl rounded-bl-md bg-surface px-4 py-3 text-[15px] font-medium leading-relaxed text-content shadow-sm">
+          Want to name the feeling? <span className="text-mute">(optional)</span>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 pl-10" role="group" aria-label="Quick feelings">
+        {QUICK_FEELINGS.map((id) => {
+          const e = getEmotion(id)
+          if (!e) return null
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onPick(id)}
+              aria-label={e.label}
+              title={e.label}
+              className="flex items-center gap-1.5 rounded-full border border-transparent bg-surface-2 py-1 pl-1 pr-3 shadow-sm transition active:scale-95"
+            >
+              <EmotionFace emotion={e.id} size={24} decorative />
+              <span className="text-xs font-medium leading-none text-soft">{e.label}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Option C — the optional emotion tag folded into the opening mood step. After
+ * a valence face is tapped, this unfolds in place (a compact card with the two
+ * grouped chip clusters + a Skip affordance). Picking a chip runs the shared
+ * `selectEmotion`; Skip collapses the whole step. Lives only at the start, once.
+ */
+function MoodStepEmotion({
+  moodLabel,
+  value,
+  onPick,
+  onSkip,
+}: {
+  moodLabel: string | null
+  value: string | null
+  onPick: (id: string | null) => void
+  onSkip: () => void
+}) {
+  return (
+    <div className="animate-rise rounded-2xl border border-border bg-surface p-3 shadow-sm">
+      <div className="mb-2.5 flex items-center justify-between px-1">
+        <span className="text-xs font-semibold text-soft">
+          {moodLabel ? `Feeling ${moodLabel.toLowerCase()} · ` : ''}add a feeling?{' '}
+          <span className="text-mute">(optional)</span>
+        </span>
+        <button
+          type="button"
+          onClick={onSkip}
+          className="-mr-1 rounded-full px-2 py-0.5 text-xs font-semibold text-accent-text transition active:scale-95 hover:bg-surface-2"
+        >
+          Skip
+        </button>
+      </div>
+      <EmotionGroupChips value={value} onToggle={onPick} />
     </div>
   )
 }

@@ -48,6 +48,20 @@
   --mf-l4-top: #ffcf57; /* Great — warm amber/gold */
   --mf-l4-bottom: #f6a81f;
 
+  /* Emotion-GROUP droplet BODY gradient (top = lighter crown → bottom = deeper
+     base). The color now signals the KIND of feeling (its GROUP), while the
+     per-emotion mascot expression + the always-visible label carry the specific
+     emotion — so it stays colorblind-safe. Two groups only:
+       Pleasant  → green
+       Unpleasant → muted blue-grey
+     Both stops are mid-tones tuned so the dark mascot ink (#0b3b36) clears
+     WCAG AA (≥4.5:1) across the WHOLE body, in both themes. The `-bottom`
+     value also drives the subheading dot + the Reflect breakdown bar. */
+  --eg-pleasant-top: #7ede9a;
+  --eg-pleasant-bottom: #41c268;
+  --eg-unpleasant-top: #a3afc6;
+  --eg-unpleasant-bottom: #93a1ba;
+
   /* Elevation */
   --shadow-sm: 0 1px 2px rgba(16, 34, 31, 0.06);
   --shadow-md: 0 8px 24px -8px rgba(16, 34, 31, 0.16);
@@ -92,6 +106,13 @@
   --mf-l3-bottom: #63d488;
   --mf-l4-top: #ffdc86;
   --mf-l4-bottom: #ffbf3a;
+
+  /* Brighter group bodies for the dark surfaces; the dark ink still clears
+     WCAG AA (≥4.5:1) across each whole body. */
+  --eg-pleasant-top: #8ee6a6;
+  --eg-pleasant-bottom: #63d488;
+  --eg-unpleasant-top: #aeb9cf;
+  --eg-unpleasant-bottom: #9aa7bf;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.5);

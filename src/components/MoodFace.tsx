@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from 'react'
 import type { Mood } from '../types'
-import { getEmotion } from '../lib/emotions'
+import { getEmotion, GROUP_COLORS } from '../lib/emotions'
 
 /**
  * Mira mascot-droplet faces — the approved "Style 1" art, ported faithfully
@@ -25,9 +25,27 @@ const INK = '#0b3b36'
 // The droplet body path — identical to Mascot.tsx so the family stays on-model.
 const DROP = 'M50 8 C74 30 86 46 86 62 A36 36 0 1 1 14 62 C14 46 26 30 50 8 Z'
 
-type EyeType = 'open' | 'happy' | 'closed' | 'wide' | 'droopy'
-type MouthType = 'grin' | 'smile' | 'smallSmile' | 'neutral' | 'smallFrown' | 'frown' | 'wavy'
-type BrowType = 'none' | 'worried' | 'raised'
+type EyeType =
+  | 'open'
+  | 'happy'
+  | 'closed'
+  | 'wide'
+  | 'droopy'
+  | 'flat' // half-lidded / bored
+  | 'blank' // vacant, catch-light-less dots
+  | 'sideEye' // pupils cut to one side (envy)
+  | 'lookAway' // pupils averted down-and-away (guilt)
+type MouthType =
+  | 'grin'
+  | 'smile'
+  | 'smallSmile'
+  | 'neutral'
+  | 'smallFrown'
+  | 'frown'
+  | 'wavy'
+  | 'smirk' // one-sided upturn (envy)
+  | 'grimace' // gritted / tight (embarrassed)
+type BrowType = 'none' | 'worried' | 'raised' | 'angry'
 
 interface Expr {
   eyes: EyeType
@@ -53,25 +71,27 @@ const LADDER: Expr[] = [
   { ...BASE, eyes: 'happy', mouth: 'grin', blush: true }, // great
 ]
 
-// Emotion-tag expressions. Shape (brow/eye/mouth) does the disambiguating work
-// so nothing relies on the color glow alone.
+// Emotion-tag expressions. Color now carries the body, but SHAPE still does the
+// disambiguating work — especially between the same-hue pairs (Joy/Gratitude,
+// Anxious/Excited, Love/Embarrassed, Sad/Lonely/Ennui, Calm/Content), each of
+// which is given a deliberately different brow/eye/mouth combination.
 const EXPRESSIONS: Record<string, Expr> = {
-  joy: { ...BASE, eyes: 'happy', mouth: 'grin', blush: true },
-  calm: { ...BASE, eyes: 'closed', mouth: 'smallSmile' },
-  sad: { ...BASE, eyes: 'droopy', mouth: 'frown', brow: 'worried', tear: true },
-  anxious: { ...BASE, eyes: 'wide', mouth: 'wavy', brow: 'raised' },
-  love: { ...BASE, eyes: 'happy', mouth: 'smile', blush: true, heart: true },
-  hope: { ...BASE, eyes: 'open', mouth: 'smallSmile', brow: 'raised' },
-  gratitude: { ...BASE, eyes: 'happy', mouth: 'smile', blush: true },
-  excited: { ...BASE, eyes: 'wide', mouth: 'grin', brow: 'raised', blush: true },
-  content: { ...BASE, eyes: 'closed', mouth: 'smile' },
-  lonely: { ...BASE, eyes: 'droopy', mouth: 'smallFrown' },
-  guilt: { ...BASE, eyes: 'droopy', mouth: 'smallFrown', brow: 'worried' },
-  empty: { ...BASE, eyes: 'droopy', mouth: 'neutral' },
-  envy: { ...BASE, eyes: 'open', mouth: 'smallFrown', brow: 'worried' },
-  frustrated: { ...BASE, eyes: 'open', mouth: 'frown', brow: 'worried' },
-  embarrassed: { ...BASE, eyes: 'wide', mouth: 'wavy', brow: 'raised', blush: true },
-  bored: { ...BASE, eyes: 'droopy', mouth: 'neutral' },
+  joy: { ...BASE, eyes: 'happy', mouth: 'grin', blush: true }, // big open grin
+  gratitude: { ...BASE, eyes: 'closed', mouth: 'smile', blush: true }, // warm closed-eye smile
+  calm: { ...BASE, eyes: 'closed', mouth: 'smallSmile' }, // serene, soft
+  content: { ...BASE, eyes: 'open', mouth: 'smile' }, // gentle open-eyed smile
+  sad: { ...BASE, eyes: 'droopy', mouth: 'frown', brow: 'worried', tear: true }, // full frown + tear
+  lonely: { ...BASE, eyes: 'droopy', mouth: 'smallFrown' }, // small, downcast
+  bored: { ...BASE, eyes: 'flat', mouth: 'neutral' }, // half-lidded, flat (ennui)
+  empty: { ...BASE, eyes: 'blank', mouth: 'neutral' }, // vacant, catch-light-less
+  anxious: { ...BASE, eyes: 'wide', mouth: 'wavy', brow: 'worried' }, // worried, angled brows
+  excited: { ...BASE, eyes: 'wide', mouth: 'grin', brow: 'raised', blush: true }, // open grin, raised brows
+  love: { ...BASE, eyes: 'happy', mouth: 'smile', blush: true, heart: true }, // soft smile + blush + heart
+  embarrassed: { ...BASE, eyes: 'wide', mouth: 'grimace', brow: 'raised', blush: true }, // grimace + blush
+  hope: { ...BASE, eyes: 'open', mouth: 'smallSmile', brow: 'raised' }, // hopeful up-smile
+  guilt: { ...BASE, eyes: 'lookAway', mouth: 'smallFrown', brow: 'worried' }, // averted, downcast
+  envy: { ...BASE, eyes: 'sideEye', mouth: 'smirk' }, // side-eye + smirk
+  frustrated: { ...BASE, eyes: 'open', mouth: 'frown', brow: 'angry' }, // scowl + furrowed brows
 }
 
 const MOOD_ORDER: Mood[] = ['rough', 'low', 'okay', 'good', 'great']
@@ -138,6 +158,46 @@ function renderEyes(type: EyeType): ReactNode {
           <path d="M57 50 q5.5 -6.5 11 0" fill="none" stroke={INK} strokeWidth={sw} strokeLinecap="round" />
         </>
       )
+    case 'flat':
+      // Half-lidded, unimpressed — a heavy straight lid over a short pupil line.
+      // Reads clearly as "bored / ennui", distinct from happy squints (which arc
+      // up) and droopy lids (which arc down).
+      return (
+        <>
+          <line x1={31} y1={46.5} x2={43} y2={46.5} stroke={INK} strokeWidth={4} strokeLinecap="round" />
+          <line x1={57} y1={46.5} x2={69} y2={46.5} stroke={INK} strokeWidth={4} strokeLinecap="round" />
+          <line x1={33} y1={50.5} x2={41} y2={50.5} stroke={INK} strokeWidth={3} strokeLinecap="round" opacity={0.55} />
+          <line x1={59} y1={50.5} x2={67} y2={50.5} stroke={INK} strokeWidth={3} strokeLinecap="round" opacity={0.55} />
+        </>
+      )
+    case 'blank':
+      // Vacant dots — no catch-light, so the face reads emotionally "empty".
+      return (
+        <>
+          <circle cx={37} cy={47} r={4.6} fill={INK} opacity={0.72} />
+          <circle cx={63} cy={47} r={4.6} fill={INK} opacity={0.72} />
+        </>
+      )
+    case 'sideEye':
+      // Both pupils cut to the side — a knowing, envious glance.
+      return (
+        <>
+          <circle cx={37} cy={47} r={6.5} fill="#ffffff" stroke={INK} strokeWidth={2.4} />
+          <circle cx={63} cy={47} r={6.5} fill="#ffffff" stroke={INK} strokeWidth={2.4} />
+          <circle cx={40.4} cy={47} r={2.8} fill={INK} />
+          <circle cx={66.4} cy={47} r={2.8} fill={INK} />
+        </>
+      )
+    case 'lookAway':
+      // Pupils averted down-and-away — a guilty, can't-meet-your-eye look.
+      return (
+        <>
+          <circle cx={37} cy={47} r={6.5} fill="#ffffff" stroke={INK} strokeWidth={2.4} />
+          <circle cx={63} cy={47} r={6.5} fill="#ffffff" stroke={INK} strokeWidth={2.4} />
+          <circle cx={34.2} cy={49.4} r={2.8} fill={INK} />
+          <circle cx={60.2} cy={49.4} r={2.8} fill={INK} />
+        </>
+      )
     default: // open — with the mascot's signature catch-light
       return (
         <>
@@ -172,6 +232,19 @@ function renderMouth(type: MouthType): ReactNode {
       return <path d="M35 73 q15 -13 30 0" fill="none" stroke={INK} strokeWidth={sw} strokeLinecap="round" />
     case 'wavy':
       return <path d="M38 68 q5 -6 10 0 q5 6 10 0" fill="none" stroke={INK} strokeWidth={sw} strokeLinecap="round" />
+    case 'smirk':
+      // Asymmetric one-sided upturn — a wry, envious half-smile.
+      return <path d="M37 69 Q49 68 64 61" fill="none" stroke={INK} strokeWidth={sw} strokeLinecap="round" />
+    case 'grimace':
+      // Tight, gritted mouth — the awkward "eek" of embarrassment.
+      return (
+        <>
+          <rect x={37} y={62} width={26} height={9} rx={3.5} fill="#ffffff" stroke={INK} strokeWidth={3} />
+          <line x1={39} y1={66.5} x2={61} y2={66.5} stroke={INK} strokeWidth={2.6} strokeLinecap="round" />
+          <line x1={45} y1={62.5} x2={45} y2={70.5} stroke={INK} strokeWidth={2.2} />
+          <line x1={55} y1={62.5} x2={55} y2={70.5} stroke={INK} strokeWidth={2.2} />
+        </>
+      )
   }
 }
 
@@ -189,6 +262,15 @@ function renderBrow(type: BrowType): ReactNode {
       <>
         <path d="M30 39 q7 -3.5 14 0" fill="none" stroke={INK} strokeWidth={sw} strokeLinecap="round" />
         <path d="M56 39 q7 -3.5 14 0" fill="none" stroke={INK} strokeWidth={sw} strokeLinecap="round" />
+      </>
+    )
+  if (type === 'angry')
+    // Inner ends pulled DOWN toward the nose — a furrowed scowl (mirror of the
+    // worried brow), so frustration reads apart from sadness.
+    return (
+      <>
+        <path d="M29 37 L45 42" stroke={INK} strokeWidth={sw} strokeLinecap="round" />
+        <path d="M71 37 L55 42" stroke={INK} strokeWidth={sw} strokeLinecap="round" />
       </>
     )
   return null
@@ -258,9 +340,13 @@ function DropletFace({
       {renderMouth(expr.mouth)}
       {expr.tear && <path d="M30 54 q-3 5 0 8 q3 -3 0 -8 Z" fill="#bfe0ff" />}
       {expr.heart && (
+        // Fixed romantic red with a white edge so it stays visible even when the
+        // body itself is the (rose) Love color.
         <path
           d="M75 24 c-1.6 -2.6 -6 -1 -6 2.4 c0 2.6 3.2 4.4 6 6.6 c2.8 -2.2 6 -4 6 -6.6 c0 -3.4 -4.4 -5 -6 -2.4 Z"
-          fill={glow}
+          fill="#ff3f6c"
+          stroke="#ffffff"
+          strokeWidth={1.2}
         />
       )}
       {/* the "mirror" shine — Mira's signature highlight */}
@@ -311,15 +397,22 @@ interface EmotionFaceProps {
   className?: string
 }
 
-/** A face for a categorical emotion tag (expression + color-tinted glow). */
+/** A face for a categorical emotion tag: the droplet BODY is the emotion's
+ *  GROUP color (lighter crown → deeper base), so the tag reads by KIND of
+ *  feeling at a glance; WITHIN a group the expression + always-visible label
+ *  carry the specific emotion (colorblind-safe). This mirrors how the valence
+ *  ladder colors its body per level — here the body is per-GROUP. The dark
+ *  mascot ink stays AA-legible on these mid-tone group fills in both themes. */
 export function EmotionFace({ emotion, size = 40, selected, decorative, className }: EmotionFaceProps) {
   const meta = getEmotion(emotion)
   const expr = (meta && EXPRESSIONS[meta.expression]) ?? BASE
-  const glow = meta?.color ?? 'var(--accent)'
+  const colors = meta ? GROUP_COLORS[meta.group] : undefined
   return (
     <DropletFace
       expr={expr}
-      glow={glow}
+      glow={colors?.bottom ?? 'var(--accent)'}
+      bodyTop={colors?.top ?? 'var(--accent)'}
+      bodyBottom={colors?.bottom ?? 'var(--accent-strong)'}
       size={size}
       selected={selected}
       decorative={decorative}

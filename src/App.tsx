@@ -14,6 +14,7 @@ import {
 import { loadSettings } from './lib/llm'
 import { applyTheme, loadTheme, setTheme, watchSystem, type ThemeMode } from './lib/theme'
 import { loadSelectorStyle, saveSelectorStyle, type SelectorStyle } from './lib/selectorStyle'
+import { loadFeelingEntry, saveFeelingEntry, type FeelingEntry } from './lib/feelingEntry'
 import Capture from './components/Capture'
 import Timeline from './components/Timeline'
 import Reflection from './components/Reflection'
@@ -75,6 +76,7 @@ export default function App() {
   const [settings, setSettings] = useState(() => loadSettings())
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => loadTheme())
   const [selectorStyle, setSelectorStyle] = useState<SelectorStyle>(() => loadSelectorStyle())
+  const [feelingEntry, setFeelingEntry] = useState<FeelingEntry>(() => loadFeelingEntry())
   const [success, setSuccess] = useState<SuccessState | null>(null)
   const [showStreak, setShowStreak] = useState(false)
   const [journalTheme, setJournalTheme] = useState<string | null>(null)
@@ -125,6 +127,11 @@ export default function App() {
   const changeSelectorStyle = (s: SelectorStyle) => {
     setSelectorStyle(s)
     saveSelectorStyle(s)
+  }
+
+  const changeFeelingEntry = (f: FeelingEntry) => {
+    setFeelingEntry(f)
+    saveFeelingEntry(f)
   }
 
   useEffect(() => {
@@ -272,6 +279,7 @@ export default function App() {
               onAutoSave={handleAutoSave}
               onFinish={handleFinish}
               selectorStyle={selectorStyle}
+              feelingEntry={feelingEntry}
             />
           )}
           {tab === 'journal' && (
@@ -326,6 +334,8 @@ export default function App() {
             onThemeChange={changeTheme}
             selectorStyle={selectorStyle}
             onSelectorStyleChange={changeSelectorStyle}
+            feelingEntry={feelingEntry}
+            onFeelingEntryChange={changeFeelingEntry}
             onClose={() => setShowSettings(false)}
             onSaved={setSettings}
             entries={entries}

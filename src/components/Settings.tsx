@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Check, Download, Upload, X } from 'lucide-react'
+import { Check, Download, MessageCircle, Plus, Upload, X } from 'lucide-react'
 import type { Entry } from '../types'
 import type { LLMSettings, Provider } from '../lib/llm'
 import { PROVIDER_PRESETS, llmFollowUp, saveSettings } from '../lib/llm'
@@ -7,6 +7,7 @@ import type { ThemeMode } from '../lib/theme'
 import { resolveIsDark } from '../lib/theme'
 import { PALETTES, applyPalette, loadPalette, savePalette } from '../lib/palette'
 import type { SelectorStyle } from '../lib/selectorStyle'
+import type { FeelingEntry } from '../lib/feelingEntry'
 import { MOODS } from '../types'
 import { MoodFace } from './MoodFace'
 import {
@@ -26,6 +27,8 @@ interface Props {
   onThemeChange: (m: ThemeMode) => void
   selectorStyle: SelectorStyle
   onSelectorStyleChange: (s: SelectorStyle) => void
+  feelingEntry: FeelingEntry
+  onFeelingEntryChange: (f: FeelingEntry) => void
   onClose: () => void
   onSaved: (s: LLMSettings) => void
   entries: Entry[]
@@ -48,6 +51,8 @@ export default function Settings({
   onThemeChange,
   selectorStyle,
   onSelectorStyleChange,
+  feelingEntry,
+  onFeelingEntryChange,
   onClose,
   onSaved,
   lock,
@@ -294,6 +299,48 @@ export default function Settings({
               </span>
               <span className="text-[11px] font-semibold text-content">Weather · classic</span>
             </button>
+          </div>
+        </section>
+
+        {/* Feeling entry point (Labs experiment) */}
+        <section>
+          <div className="mb-1 flex items-center gap-2">
+            <h3 className="font-display text-sm font-semibold text-content">Feeling entry point</h3>
+            <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-mute">
+              Labs
+            </span>
+          </div>
+          <p className="mb-3 text-xs font-medium text-mute">
+            Where the optional feeling tag is offered on the Write screen. Only applies to the Faces
+            selector — the outcome is identical, just the entry point moves.
+          </p>
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Feeling entry point">
+            <FeelingCard
+              active={feelingEntry === 'pill'}
+              onClick={() => onFeelingEntryChange('pill')}
+              label="Pill"
+              hint="current"
+              glyph={
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-surface-2 px-1.5 py-0.5 ring-1 ring-border">
+                  <Plus size={11} className="text-soft" aria-hidden="true" />
+                  <span className="h-2 w-2 rounded-full bg-mute/50" aria-hidden="true" />
+                </span>
+              }
+            />
+            <FeelingCard
+              active={feelingEntry === 'conversational'}
+              onClick={() => onFeelingEntryChange('conversational')}
+              label="In chat"
+              hint="B"
+              glyph={<MessageCircle size={20} className="text-soft" aria-hidden="true" />}
+            />
+            <FeelingCard
+              active={feelingEntry === 'moodstep'}
+              onClick={() => onFeelingEntryChange('moodstep')}
+              label="With mood"
+              hint="C"
+              glyph={<MoodFace level={3} size={22} decorative />}
+            />
           </div>
         </section>
 
@@ -553,6 +600,40 @@ function Option({
         <span className="text-sm font-semibold text-content">{title}</span>
       </div>
       <p className="mt-1 pl-6 text-xs font-medium text-mute">{subtitle}</p>
+    </button>
+  )
+}
+
+function FeelingCard({
+  active,
+  onClick,
+  label,
+  hint,
+  glyph,
+}: {
+  active: boolean
+  onClick: () => void
+  label: string
+  hint: string
+  glyph: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      aria-label={`${label} (${hint})`}
+      onClick={onClick}
+      className={`flex flex-col items-center gap-2 rounded-2xl p-3 shadow-sm transition active:scale-95 ${
+        active ? 'bg-accent-soft ring-2 ring-accent' : 'bg-surface'
+      }`}
+    >
+      <span className="grid h-7 place-items-center" aria-hidden="true">
+        {glyph}
+      </span>
+      <span className="text-center text-[11px] font-semibold leading-tight text-content">
+        {label} <span className="font-medium text-mute">· {hint}</span>
+      </span>
     </button>
   )
 }

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { ChevronLeft, Check, Pencil, Trash2, X } from 'lucide-react'
+import { ChevronLeft, Check, MessageSquare, NotebookPen, Pencil, Trash2, X } from 'lucide-react'
 import type { Entry, Mood, Turn } from '../types'
 import { MOODS } from '../types'
-import { extractThemes, summarize } from '../lib/ai'
+import { dayContext, extractThemes, generateNote, summarize } from '../lib/ai'
 import Mascot from './Mascot'
 
 interface Props {
@@ -38,6 +38,10 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [draftTurns, setDraftTurns] = useState<Turn[]>(entry.turns)
   const [draftMood, setDraftMood] = useState<Mood | null>(entry.mood)
+  // Default to the readable journal note; the raw chat is one tap away.
+  const [view, setView] = useState<'note' | 'chat'>('note')
+  const [note, setNote] = useState<string | undefined>(entry.note)
+  const [generatingNote, setGeneratingNote] = useState(false)
 
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => {
@@ -49,6 +53,29 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
     return () => window.removeEventListener('keydown', onEsc)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing])
+
+  // Lazily generate a journal note for older entries that don't have one yet,
+  // then persist it silently through the existing save path (no "edited" side
+  // effects — the date and content are untouched, we only attach `note`).
+  useEffect(() => {
+    setNote(entry.note)
+    if (entry.note) return
+    let cancelled = false
+    setGeneratingNote(true)
+    generateNote(entry.turns, entry.mood, dayContext(new Date(entry.createdAt)))
+      .then((n) => {
+        if (cancelled) return
+        setNote(n)
+        onSave({ ...entry, note: n })
+      })
+      .finally(() => {
+        if (!cancelled) setGeneratingNote(false)
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entry.id])
 
   const startEdit = () => {
     setDraftTurns(entry.turns)
@@ -73,7 +100,10 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
 
   const editableCount = entry.turns.filter((t) => t.role === 'you' && t.kind !== 'mood').length
 
-  const save = () => {
+  const [saving, setSaving] = useState(false)
+
+  const save = async () => {
+    if (saving) return
     const moodMeta = draftMood ? MOODS.find((m) => m.key === draftMood) : null
     // Rebuild turns: trim edits, drop emptied text turns, refresh the mood chip label.
     const turns: Turn[] = draftTurns
@@ -91,18 +121,34 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
       .join(' ')
     const moodLabel = draftMood ? MOODS.find((m) => m.key === draftMood)?.label.toLowerCase() : null
 
+    // Regenerate the note alongside the theme/summary re-derivation.
+    setSaving(true)
+    let newNote: string
+    try {
+      newNote = await generateNote(turns, draftMood, dayContext(new Date(entry.createdAt)))
+    } catch {
+      newNote = note ?? ''
+    }
+
     const updated: Entry = {
       ...entry,
       mood: draftMood,
       turns,
       themes: extractThemes(youText),
       summary: youText ? summarize(turns) : `Checked in — feeling ${moodLabel ?? 'okay'}`,
+      note: newNote,
     }
     onSave(updated)
+    setNote(newNote)
+    setSaving(false)
     setEditing(false)
+    setView('note')
   }
 
   const shownTurns = editing ? draftTurns : entry.turns
+  // While editing we always show the (editable) conversation; otherwise the
+  // chosen tab decides between the journal note and the raw chat.
+  const showChat = editing || view === 'chat'
 
   return (
     <div className="animate-fade-up absolute inset-0 z-40 flex flex-col bg-bg">
@@ -124,9 +170,10 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
         {editing ? (
           <button
             onClick={save}
-            className="flex items-center gap-1 rounded-full bg-accent px-3.5 py-1.5 text-sm font-semibold text-on-accent transition active:scale-95"
+            disabled={saving}
+            className="flex items-center gap-1 rounded-full bg-accent px-3.5 py-1.5 text-sm font-semibold text-on-accent transition active:scale-95 disabled:opacity-60"
           >
-            <Check size={15} aria-hidden="true" /> Save
+            <Check size={15} aria-hidden="true" /> {saving ? 'Saving…' : 'Save'}
           </button>
         ) : (
           <span
@@ -172,9 +219,52 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
         </div>
       )}
 
-      {/* Conversation */}
-      <div className="no-scrollbar flex-1 space-y-4 overflow-y-auto px-5 py-5">
-        {shownTurns.map((t, i) => {
+      {/* View toggle: readable journal note vs. the raw conversation (read mode only) */}
+      {!editing && (
+        <div className="px-4 pt-3">
+          <div
+            role="tablist"
+            aria-label="Entry view"
+            className="mx-auto grid max-w-[18rem] grid-cols-2 gap-1 rounded-full bg-surface-2 p-1"
+          >
+            <button
+              role="tab"
+              id="entry-tab-note"
+              aria-selected={view === 'note'}
+              aria-controls="entry-view-panel"
+              onClick={() => setView('note')}
+              className={`flex items-center justify-center gap-1.5 rounded-full py-1.5 text-sm font-semibold transition motion-reduce:transition-none ${
+                view === 'note' ? 'bg-accent text-on-accent shadow-sm' : 'text-soft'
+              }`}
+            >
+              <NotebookPen size={14} aria-hidden="true" /> Journal note
+            </button>
+            <button
+              role="tab"
+              id="entry-tab-chat"
+              aria-selected={view === 'chat'}
+              aria-controls="entry-view-panel"
+              onClick={() => setView('chat')}
+              className={`flex items-center justify-center gap-1.5 rounded-full py-1.5 text-sm font-semibold transition motion-reduce:transition-none ${
+                view === 'chat' ? 'bg-accent text-on-accent shadow-sm' : 'text-soft'
+              }`}
+            >
+              <MessageSquare size={14} aria-hidden="true" /> Conversation
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Body: journal note or conversation */}
+      <div
+        id="entry-view-panel"
+        role={editing ? undefined : 'tabpanel'}
+        aria-labelledby={editing ? undefined : view === 'note' ? 'entry-tab-note' : 'entry-tab-chat'}
+        className="no-scrollbar flex-1 space-y-4 overflow-y-auto px-5 py-5"
+      >
+        {showChat ? (
+          <>
+            {shownTurns.map((t, i) => {
           const isMira = t.role === 'mira'
 
           if (t.kind === 'mood') {
@@ -231,14 +321,46 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
           )
         })}
 
-        {/* Themes (read mode) */}
-        {!editing && entry.themes.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {entry.themes.map((th) => (
-              <span key={th} className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-semibold text-accent-text">
-                #{th}
-              </span>
-            ))}
+            {/* Themes (read mode) */}
+            {!editing && entry.themes.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {entry.themes.map((th) => (
+                  <span key={th} className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-semibold text-accent-text">
+                    #{th}
+                  </span>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="animate-fade-up motion-reduce:animate-none">
+            {note ? (
+              <>
+                <article className="whitespace-pre-wrap font-display text-[17px] leading-8 text-content">
+                  {note}
+                </article>
+                {entry.themes.length > 0 && (
+                  <div className="mt-6 flex flex-wrap gap-1.5">
+                    {entry.themes.map((th) => (
+                      <span key={th} className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-semibold text-accent-text">
+                        #{th}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div
+                className="flex flex-col items-center gap-3 pt-12 text-center"
+                role="status"
+                aria-live="polite"
+              >
+                <Mascot size={40} mood="thinking" decorative />
+                <p className="text-sm font-semibold text-soft">
+                  {generatingNote ? 'Writing your note…' : 'No note for this entry yet.'}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

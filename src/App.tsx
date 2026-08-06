@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { BookOpen, Flame, Moon, PenLine, Settings as SettingsIcon, Sparkles, Sun, SunMoon } from 'lucide-react'
 import type { Entry } from './types'
-import { computeStreak, deleteEntry, loadEntries, streakStats, upsertEntry, type StreakStats } from './lib/storage'
+import {
+  computeStreak,
+  deleteEntry,
+  loadEntries,
+  loadLock,
+  streakStats,
+  upsertEntry,
+  type LockConfig,
+  type StreakStats,
+} from './lib/storage'
 import { loadSettings } from './lib/llm'
 import { applyTheme, loadTheme, setTheme, watchSystem, type ThemeMode } from './lib/theme'
 import Capture from './components/Capture'
@@ -13,6 +22,7 @@ import Splash from './components/Splash'
 import StreakSheet from './components/StreakSheet'
 import SuccessMoment from './components/SuccessMoment'
 import EntryDetail from './components/EntryDetail'
+import LockScreen from './components/LockScreen'
 
 type Tab = 'write' | 'journal' | 'reflect'
 
@@ -57,7 +67,7 @@ interface SuccessState {
 }
 
 export default function App() {
-  const [entries, setEntries] = useState<Entry[]>(() => loadEntries())
+  const [entries, setEntries] = useState<Entry[]>([])
   const [tab, setTab] = useState<Tab>('write')
   const [captureKey, setCaptureKey] = useState(0)
   const [showSettings, setShowSettings] = useState(false)
@@ -69,10 +79,32 @@ export default function App() {
   const [openEntry, setOpenEntry] = useState<Entry | null>(null)
   // Cold-start splash: true only for this initial mount (full page / PWA launch).
   const [showSplash, setShowSplash] = useState(true)
+  // App lock: config loaded from storage; `unlocked` lives only for this session,
+  // so a full reload / cold launch re-locks.
+  const [lock, setLock] = useState<LockConfig | null>(null)
+  const [lockLoaded, setLockLoaded] = useState(false)
+  const [unlocked, setUnlocked] = useState(false)
 
   const streak = useMemo(() => computeStreak(entries), [entries])
   const streaks = useMemo(() => streakStats(entries), [entries])
   const llmOn = settings.provider !== 'local'
+
+  // Load durable data (IndexedDB) once on mount. Entries then flow to children
+  // via props exactly as before, keeping async contained to this component.
+  useEffect(() => {
+    let alive = true
+    loadEntries().then((e) => alive && setEntries(e))
+    loadLock().then((l) => {
+      if (!alive) return
+      setLock(l)
+      setLockLoaded(true)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const locked = lockLoaded && lock !== null && !unlocked
 
   useEffect(() => watchSystem(() => themeMode), [themeMode])
 
@@ -93,19 +125,19 @@ export default function App() {
   }, [themeMode])
 
   // Silent save as the conversation grows — never interrupts the flow.
-  const handleAutoSave = (entry: Entry) => {
-    setEntries(upsertEntry(entry))
+  const handleAutoSave = async (entry: Entry) => {
+    setEntries(await upsertEntry(entry))
   }
 
   // Explicit "Finish" — save (idempotent), land on the Journal tab, then show a
   // positive confirmation popup OVER it: a simple "saved" note (ordinary finish)
   // or an earned celebration (milestone). See milestone rules below.
-  const handleFinish = (entry: Entry) => {
+  const handleFinish = async (entry: Entry) => {
     // Remember what was focused (the Finish button) so the modal can return
     // focus there on close.
     const trigger = (document.activeElement as HTMLElement) ?? null
 
-    const updated = upsertEntry(entry)
+    const updated = await upsertEntry(entry)
     setEntries(updated)
 
     const prev = updated.filter((e) => e.id !== entry.id)
@@ -163,13 +195,13 @@ export default function App() {
     setTab('journal')
   }
 
-  const handleEditSaved = (entry: Entry) => {
-    setEntries(upsertEntry(entry))
+  const handleEditSaved = async (entry: Entry) => {
+    setEntries(await upsertEntry(entry))
     setOpenEntry(entry)
   }
 
-  const handleDelete = (id: string) => {
-    setEntries(deleteEntry(id))
+  const handleDelete = async (id: string) => {
+    setEntries(await deleteEntry(id))
     setOpenEntry(null)
   }
 
@@ -178,6 +210,10 @@ export default function App() {
   return (
     <div className="flex min-h-full items-center justify-center p-0 sm:p-6">
       <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-bg sm:h-[820px] sm:max-w-[420px] sm:rounded-[2.25rem] sm:shadow-lg sm:ring-1 sm:ring-border">
+        {locked && lock ? (
+          <LockScreen config={lock} onUnlock={() => setUnlocked(true)} />
+        ) : (
+        <>
         {/* Header */}
         <header className="flex items-center justify-between px-5 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="flex items-center gap-2 pt-3">
@@ -276,7 +312,13 @@ export default function App() {
             onThemeChange={changeTheme}
             onClose={() => setShowSettings(false)}
             onSaved={setSettings}
+            entries={entries}
+            lock={lock}
+            onLockChange={setLock}
+            onImported={setEntries}
           />
+        )}
+        </>
         )}
       </div>
 

@@ -62,13 +62,29 @@ export const PALETTES: Palette[] = [
     light: { accent: '#9333ea', strong: '#7c22ce', soft: '#f0defc', on: '#ffffff', text: '#8021d1' },
     dark: { accent: '#c88af9', strong: '#b062f2', soft: '#2c1140', on: '#1e0a30', text: '#cf97fa' },
   },
+  {
+    id: 'slate',
+    name: 'Slate',
+    swatch: '#64748b',
+    light: { accent: '#5b6675', strong: '#475569', soft: '#e4e9ef', on: '#ffffff', text: '#465262' },
+    dark: { accent: '#a9b6c6', strong: '#8b99ab', soft: '#26313d', on: '#111820', text: '#b8c4d2' },
+  },
 ]
 
 const KEY = 'mira.palette.v1'
 
+export const DEFAULT_PALETTE = 'teal'
+
 export function loadPalette(): string {
-  // Brand locked to teal for now. PALETTES/savePalette retained so the picker can be re-enabled later.
-  return 'teal'
+  // Return the saved preset (defaulting to teal). Kept resilient: an unknown or
+  // removed id falls back to the default rather than breaking theming.
+  try {
+    const v = localStorage.getItem(KEY)
+    if (v && PALETTES.some((p) => p.id === v)) return v
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_PALETTE
 }
 
 export function savePalette(id: string) {

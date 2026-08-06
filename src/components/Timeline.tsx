@@ -28,7 +28,7 @@ const MOOD_VAR: Record<Mood, string> = {
 }
 
 function moodEmoji(entry: Entry) {
-  return MOODS.find((m) => m.key === entry.mood)?.emoji ?? '📝'
+  return MOODS.find((m) => m.key === entry.mood)?.emoji ?? ''
 }
 
 function when(ts: number) {
@@ -356,10 +356,16 @@ export default function Timeline({
                     <div className="mb-2 flex items-center justify-between">
                       <span className="text-xs font-semibold text-mute">{when(e.createdAt)}</span>
                       <span
-                        className="grid h-8 w-8 place-items-center rounded-xl text-lg"
+                        className="grid h-8 w-8 place-items-center rounded-xl text-lg ring-1 ring-border/60"
                         style={{ background: e.mood ? MOOD_VAR[e.mood] : 'var(--surface-2)' }}
                       >
-                        {moodEmoji(e)}
+                        {e.mood ? (
+                          <span aria-hidden="true">{moodEmoji(e)}</span>
+                        ) : (
+                          // No mood logged: a calm Mira mark reads as intentional
+                          // (and on-brand) rather than a placeholder glyph.
+                          <Mascot size={20} mood="calm" decorative />
+                        )}
                       </span>
                     </div>
                     <p className="font-medium leading-relaxed text-content">{e.summary}</p>

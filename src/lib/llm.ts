@@ -67,7 +67,12 @@ interface ChatMessage {
   content: string
 }
 
-async function callGemini(s: LLMSettings, system: string, messages: ChatMessage[]): Promise<string> {
+async function callGemini(
+  s: LLMSettings,
+  system: string,
+  messages: ChatMessage[],
+  maxTokens: number,
+): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${s.model}:generateContent?key=${encodeURIComponent(
     s.apiKey,
   )}`
@@ -81,7 +86,7 @@ async function callGemini(s: LLMSettings, system: string, messages: ChatMessage[
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents,
-      generationConfig: { temperature: 0.9, maxOutputTokens: 120 },
+      generationConfig: { temperature: 0.9, maxOutputTokens: maxTokens },
     }),
   })
   if (!res.ok) throw new Error(`Gemini ${res.status}`)
@@ -95,6 +100,7 @@ async function callOpenAICompatible(
   s: LLMSettings,
   system: string,
   messages: ChatMessage[],
+  maxTokens: number,
 ): Promise<string> {
   const base = s.baseUrl.replace(/\/$/, '')
   const res = await fetch(`${base}/chat/completions`, {
@@ -106,7 +112,7 @@ async function callOpenAICompatible(
     body: JSON.stringify({
       model: s.model,
       temperature: 0.9,
-      max_tokens: 120,
+      max_tokens: maxTokens,
       messages: [{ role: 'system', content: system }, ...messages],
     }),
   })
@@ -117,22 +123,35 @@ async function callOpenAICompatible(
   return text.trim()
 }
 
-async function chat(s: LLMSettings, system: string, messages: ChatMessage[]): Promise<string> {
-  if (s.provider === 'gemini') return callGemini(s, system, messages)
-  if (s.provider === 'openai') return callOpenAICompatible(s, system, messages)
+async function chat(
+  s: LLMSettings,
+  system: string,
+  messages: ChatMessage[],
+  maxTokens = 120,
+): Promise<string> {
+  if (s.provider === 'gemini') return callGemini(s, system, messages, maxTokens)
+  if (s.provider === 'openai') return callOpenAICompatible(s, system, messages, maxTokens)
   throw new Error('No LLM provider configured')
 }
 
 // ---------- Prompts the app uses ----------
 
-const MIRA_SYSTEM = `You are Mira, a warm, emotionally intelligent journaling companion.
-Your job is to help someone reflect by asking ONE short, gentle follow-up question.
-Rules:
-- Ask exactly one question, max 20 words.
-- Never give advice, reassurance clichés, or lists.
-- Be specific to what they just said; reference their own words.
-- Sound like a caring friend, not a therapist or a bot.
-- Output only the question, nothing else.`
+const MIRA_SYSTEM = `You are Mira — a warm, easygoing friend the person is journaling with. Not a therapist, not a coach, not a bot.
+
+Your reply is usually ONE short, natural response: a light reflection back, or a single simple question — whatever a good friend would actually say next.
+
+How you sound:
+- Casual and human. Talk the way a kind friend texts — plain words, contractions, a little warmth or personality. Short.
+- Meet their energy. If they're up, be genuinely happy for them; if they're down, be gentle and unhurried. Never chirpy at the wrong moment.
+- Reflect their OWN words and specifics back instead of generic prompts. React to what they actually said before nudging further.
+- Vary how you open every time. Don't fall into a formula.
+
+Hard limits:
+- Keep it under ~25 words. One thought.
+- Don't stack multiple questions. Often a warm reflection with no question at all is better.
+- No advice, no pep-talk clichés, no "hold space" / "sit with that" therapy-speak, no lists, no emoji spam.
+- Never diagnose or sound clinical.
+- Output only your reply — no labels, no quotes.`
 
 export async function llmFollowUp(
   s: LLMSettings,
@@ -145,6 +164,37 @@ export async function llmFollowUp(
   }))
   const system = context ? `${MIRA_SYSTEM}\n\nContext: ${context}` : MIRA_SYSTEM
   return chat(s, system, messages)
+}
+
+const NOTE_SYSTEM = `You turn a short journaling conversation into a "journal note" — a first-person diary entry the person can reread later.
+
+Write it AS the person (use "I"), in their voice: warm, plain, natural. 2–5 short sentences.
+
+Capture what actually happened and how they felt, drawn from what THEY said. This is their diary, not a transcript:
+- Never include Mira's questions or quote the back-and-forth.
+- Don't mention "Mira", "the conversation", or "you asked".
+- No advice, no analysis, no therapy-speak, no headers or bullet points.
+- If the day is past, write in past tense.
+
+Output only the note.`
+
+export async function llmJournalNote(
+  s: LLMSettings,
+  turns: Turn[],
+  context?: string,
+): Promise<string> {
+  const transcript = turns
+    .filter((t) => t.text.trim())
+    .map((t) => `${t.role === 'you' ? 'Me' : 'Mira'}: ${t.text}`)
+    .join('\n')
+  const system = context ? `${NOTE_SYSTEM}\n\nContext: ${context}` : NOTE_SYSTEM
+  const messages: ChatMessage[] = [
+    {
+      role: 'user',
+      content: `Here's my journaling conversation. Write my journal note in first person:\n\n${transcript}`,
+    },
+  ]
+  return chat(s, system, messages, 240)
 }
 
 const REFLECT_SYSTEM = `You are Mira, a journaling companion writing a weekly reflection.

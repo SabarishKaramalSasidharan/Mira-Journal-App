@@ -1,5 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, Calendar, Check, ChevronLeft, ChevronRight, Mic } from 'lucide-react'
+import {
+  ArrowUp,
+  Calendar,
+  Check,
+  ChevronLeft,
+  ChevronUp,
+  ChevronRight,
+  Lock,
+  Mic,
+  MicOff,
+  Square,
+  Trash2,
+} from 'lucide-react'
 import type { Entry, Mood, Turn } from '../types'
 import { MOODS } from '../types'
 import { dayContext, getFollowUp, getMoodOpener, openingPrompt, extractThemes, summarize } from '../lib/ai'
@@ -7,6 +19,21 @@ import { useSpeech } from '../lib/useSpeech'
 import Mascot from './Mascot'
 import { moodToExpression, type MascotMood } from '../lib/mascotMood'
 import DatePicker from './DatePicker'
+import '../styles/voice.css'
+
+// Gesture thresholds for the WhatsApp-style voice interaction (px).
+const CANCEL_DX = 90 // drag left past this to discard
+const LOCK_DY = 64 // drag up past this to go hands-free
+
+function fmtElapsed(ms: number): string {
+  const total = Math.floor(ms / 1000)
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+// Static bar heights (%) for the animated recording waveform.
+const WAVE_BARS = [38, 62, 30, 82, 52, 94, 44, 70, 34, 88, 50, 76, 40, 90, 58, 32, 68, 46]
 
 interface Props {
   /** Persists the in-progress entry silently as the conversation grows. */
@@ -85,9 +112,143 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
     if (taRef.current) taRef.current.style.height = 'auto'
   }
 
-  const { listening, interim, supported, error: speechError, toggle } = useSpeech((finalText) =>
-    setDraft((d) => (d ? d + ' ' : '') + finalText.trim()),
-  )
+  const {
+    listening,
+    interim,
+    transcript,
+    supported,
+    error: speechError,
+    elapsedMs,
+    start: startVoice,
+    stop: stopVoice,
+    cancel: cancelVoice,
+    clearError: clearSpeechError,
+  } = useSpeech((finalText) => {
+    const clean = finalText.trim()
+    if (clean) setDraft((d) => (d ? d + ' ' : '') + clean)
+  })
+
+  // WhatsApp-style recording gesture state.
+  const [locked, setLocked] = useState(false) // hands-free mode (released finger / keyboard)
+  const [pressing, setPressing] = useState(false) // finger currently held on the mic
+  const [cancelArmed, setCancelArmed] = useState(false) // dragged far enough left to discard
+  const [dragX, setDragX] = useState(0)
+  const pressingRef = useRef(false)
+  const cancelArmedRef = useRef(false)
+  const startPtRef = useRef({ x: 0, y: 0 })
+
+  // Any of these means the composer is swapped for the recording bar.
+  const recActive = pressing || locked || listening
+
+  const resetGesture = () => {
+    pressingRef.current = false
+    cancelArmedRef.current = false
+    setPressing(false)
+    setCancelArmed(false)
+    setDragX(0)
+  }
+
+  const beginHold = (e: React.PointerEvent) => {
+    if (!supported || recActive) return
+    e.preventDefault()
+    try {
+      ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+    } catch {
+      /* ignore */
+    }
+    startPtRef.current = { x: e.clientX, y: e.clientY }
+    pressingRef.current = true
+    cancelArmedRef.current = false
+    setPressing(true)
+    setLocked(false)
+    setCancelArmed(false)
+    setDragX(0)
+    startVoice()
+  }
+
+  const moveHold = (e: React.PointerEvent) => {
+    if (!pressingRef.current) return
+    const dx = e.clientX - startPtRef.current.x
+    const dy = e.clientY - startPtRef.current.y
+    // Slide up past the threshold → lock into hands-free mode.
+    if (dy < -LOCK_DY) {
+      pressingRef.current = false
+      cancelArmedRef.current = false
+      setPressing(false)
+      setCancelArmed(false)
+      setDragX(0)
+      setLocked(true)
+      try {
+        ;(e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId)
+      } catch {
+        /* ignore */
+      }
+      return
+    }
+    setDragX(Math.min(0, dx))
+    const armed = dx < -CANCEL_DX
+    cancelArmedRef.current = armed
+    setCancelArmed(armed)
+  }
+
+  const endHold = (e: React.PointerEvent) => {
+    if (!pressingRef.current) return
+    try {
+      ;(e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId)
+    } catch {
+      /* ignore */
+    }
+    const discard = cancelArmedRef.current
+    resetGesture()
+    if (discard) cancelVoice()
+    else stopVoice()
+  }
+
+  // Keyboard fallback: press-hold isn't keyboard-operable, so Enter/Space
+  // toggles a locked (hands-free) recording that a Stop button can end.
+  const onMicKey = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    e.preventDefault()
+    if (!supported) return
+    if (recActive) {
+      setLocked(false)
+      stopVoice()
+    } else {
+      setLocked(true)
+      startVoice()
+    }
+  }
+
+  const stopLocked = () => {
+    setLocked(false)
+    stopVoice()
+  }
+  const cancelLocked = () => {
+    setLocked(false)
+    cancelVoice()
+  }
+
+  // Live preview of what's being transcribed (final so far + current interim).
+  const livePreview = [transcript, interim].filter(Boolean).join(' ').trim()
+
+  // Keyboard focus management: when we lock (e.g. via keyboard), move focus to
+  // the Stop button; when recording ends, hand focus back to the mic.
+  const micBtnRef = useRef<HTMLButtonElement>(null)
+  const stopBtnRef = useRef<HTMLButtonElement>(null)
+  const wasRecordingRef = useRef(false)
+
+  useEffect(() => {
+    if (locked) stopBtnRef.current?.focus()
+  }, [locked])
+
+  useEffect(() => {
+    if (recActive) {
+      wasRecordingRef.current = true
+    } else if (wasRecordingRef.current) {
+      wasRecordingRef.current = false
+      micBtnRef.current?.focus()
+    }
+  }, [recActive])
 
   // Intentionally NOT auto-focusing the composer on mount / tab arrival: doing
   // so pops the iOS keyboard before people have seen the page (mascot, mood
@@ -304,74 +465,199 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
       )}
 
       {/* Composer */}
-      <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-        {listening && (
-          <div className="mb-2 px-2 text-sm font-semibold text-accent-text">
-            <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-flame align-middle" />
-            listening… {interim && <span className="font-medium text-mute">{interim}</span>}
-          </div>
-        )}
+      <div className="relative px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
         {speechError && (
-          <div role="alert" className="mb-2 px-2 text-sm font-semibold text-flame">
-            {speechError}
+          <div
+            role="alert"
+            className="mb-2 flex items-start justify-between gap-3 px-2 text-sm font-semibold text-flame"
+          >
+            <span className="min-w-0">{speechError}</span>
+            <button
+              onClick={clearSpeechError}
+              className="shrink-0 text-xs font-semibold text-mute underline underline-offset-2 transition active:scale-95"
+            >
+              Dismiss
+            </button>
           </div>
         )}
-        <div className="flex items-end gap-2">
-          <button
-            onClick={toggle}
-            aria-label={
-              !supported
-                ? 'Voice input not supported in this browser'
-                : listening
-                  ? 'Stop voice input'
-                  : 'Start voice input'
-            }
-            aria-pressed={supported ? listening : undefined}
-            title={supported ? undefined : "Voice input isn't supported in this browser"}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-border transition active:scale-90"
-            style={{
-              background: listening ? 'var(--flame)' : 'var(--surface)',
-              color: listening ? '#ffffff' : 'var(--content-soft)',
-              boxShadow: '0 3px 0 0 rgba(0,0,0,0.10)',
-              opacity: supported ? 1 : 0.5,
-            }}
-          >
-            <Mic size={20} aria-hidden="true" />
-          </button>
-          <textarea
-            ref={taRef}
-            value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value)
-              autoGrow(e.target)
-            }}
-            onKeyDown={onKey}
-            rows={1}
-            aria-label="Write your journal entry"
-            placeholder="Just start talking or typing…"
-            className="max-h-40 flex-1 resize-none rounded-lg border border-border bg-surface px-4 py-3 text-[15px] font-medium leading-relaxed text-content shadow-sm outline-none placeholder:text-mute focus-within:ring-2 focus-within:ring-accent/60 focus:ring-2 focus:ring-accent/60"
-          />
-          {finishMode ? (
-            <button
-              onClick={finish}
-              aria-label="Finish entry"
-              className="btn3d flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-accent px-4 text-sm font-semibold text-on-accent"
-              style={{ boxShadow: '0 4px 0 0 var(--accent-strong)' }}
-            >
-              <Check size={18} aria-hidden="true" /> Finish
-            </button>
-          ) : (
-            <button
-              onClick={send}
-              disabled={!draft.trim() || thinking}
-              aria-label="Send"
-              className="btn3d grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-accent text-on-accent disabled:opacity-40 disabled:active:translate-y-0"
-              style={{ boxShadow: '0 4px 0 0 var(--accent-strong)' }}
-            >
-              <ArrowUp size={20} aria-hidden="true" />
-            </button>
+
+        {/* Base composer row. Kept mounted (even while recording) so the held
+            mic button retains pointer capture through the whole gesture. */}
+        <div aria-hidden={recActive || undefined} className={recActive ? 'opacity-0' : ''}>
+          {!supported && (
+            <p className="mb-2 px-2 text-xs font-medium text-mute">
+              Voice input isn&apos;t available in this browser — you can still type. Try Chrome or Edge for the mic.
+            </p>
           )}
+          <div className="flex items-end gap-2">
+            <button
+              ref={micBtnRef}
+              type="button"
+              onPointerDown={beginHold}
+              onPointerMove={moveHold}
+              onPointerUp={endHold}
+              onPointerCancel={endHold}
+              onKeyDown={onMicKey}
+              disabled={!supported}
+              aria-label={
+                supported
+                  ? 'Record voice. Hold to talk; slide up to lock, slide left to cancel. Press Enter or Space to toggle recording.'
+                  : "Voice input isn't supported in this browser"
+              }
+              title={supported ? 'Hold to talk' : "Voice input isn't supported in this browser"}
+              className="grid h-11 w-11 shrink-0 touch-none select-none place-items-center rounded-lg border border-border transition active:scale-90 disabled:cursor-not-allowed"
+              style={{
+                background: 'var(--surface)',
+                color: 'var(--content-soft)',
+                boxShadow: '0 3px 0 0 rgba(0,0,0,0.10)',
+                opacity: supported ? 1 : 0.5,
+              }}
+            >
+              {supported ? (
+                <Mic size={20} aria-hidden="true" />
+              ) : (
+                <MicOff size={20} aria-hidden="true" />
+              )}
+            </button>
+            <textarea
+              ref={taRef}
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value)
+                autoGrow(e.target)
+              }}
+              onKeyDown={onKey}
+              rows={1}
+              aria-label="Write your journal entry"
+              placeholder="Write or hold the mic…"
+              className="max-h-40 min-h-[2.875rem] flex-1 resize-none rounded-lg border border-border bg-surface px-4 py-3 text-[15px] font-medium leading-relaxed text-content shadow-sm outline-none placeholder:overflow-hidden placeholder:whitespace-nowrap placeholder:text-ellipsis placeholder:text-mute focus-within:ring-2 focus-within:ring-accent/60 focus:ring-2 focus:ring-accent/60"
+            />
+            {finishMode ? (
+              <button
+                onClick={finish}
+                aria-label="Finish entry"
+                className="btn3d flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-accent px-4 text-sm font-semibold text-on-accent"
+                style={{ boxShadow: '0 4px 0 0 var(--accent-strong)' }}
+              >
+                <Check size={18} aria-hidden="true" /> Finish
+              </button>
+            ) : (
+              <button
+                onClick={send}
+                disabled={!draft.trim() || thinking}
+                aria-label="Send"
+                className="btn3d grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-accent text-on-accent disabled:opacity-40 disabled:active:translate-y-0"
+                style={{ boxShadow: '0 4px 0 0 var(--accent-strong)' }}
+              >
+                <ArrowUp size={20} aria-hidden="true" />
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Recording overlay — sits on top of the (still-mounted) base row. */}
+        {recActive && (
+          <div className="voice-rec-enter absolute inset-0 flex flex-col justify-end bg-bg px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+            {/* Screen-reader status */}
+            <div className="sr-only" role="status" aria-live="polite">
+              {cancelArmed
+                ? 'Release to cancel recording.'
+                : locked
+                  ? 'Recording locked, hands-free.'
+                  : 'Recording.'}{' '}
+              {livePreview}
+            </div>
+
+            {/* Slide-up-to-lock hint (only while actively holding) */}
+            {pressing && !locked && (
+              <div className="mb-2 flex justify-center">
+                <div
+                  className={`voice-lock-hint flex flex-col items-center gap-0.5 rounded-full bg-surface-2 px-2.5 py-2 text-mute shadow-sm transition-opacity ${
+                    cancelArmed ? 'opacity-20' : ''
+                  }`}
+                >
+                  <Lock size={14} aria-hidden="true" />
+                  <ChevronUp size={12} aria-hidden="true" />
+                </div>
+              </div>
+            )}
+
+            {/* Live transcription preview */}
+            {livePreview && (
+              <div className="mb-2 max-h-16 overflow-y-auto px-2 text-sm font-medium leading-relaxed text-soft">
+                {transcript}
+                {interim && <span className="text-mute"> {interim}</span>}
+              </div>
+            )}
+
+            {/* The recording bar */}
+            <div
+              className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 shadow-sm"
+              style={{
+                transform: dragX ? `translateX(${Math.max(dragX, -48)}px)` : undefined,
+              }}
+            >
+              {cancelArmed ? (
+                <Trash2 size={20} className="shrink-0 text-flame" aria-hidden="true" />
+              ) : (
+                <span className="voice-dot h-3 w-3 shrink-0 rounded-full bg-flame" aria-hidden="true" />
+              )}
+              <span
+                className="shrink-0 text-sm font-semibold tabular-nums text-content"
+                aria-hidden="true"
+              >
+                {fmtElapsed(elapsedMs)}
+              </span>
+
+              {/* Waveform */}
+              <div
+                className={`flex h-6 flex-1 items-center justify-center gap-[3px] overflow-hidden ${
+                  cancelArmed ? 'text-flame' : 'text-accent'
+                }`}
+                aria-hidden="true"
+              >
+                {WAVE_BARS.map((h, i) => (
+                  <span
+                    key={i}
+                    className="voice-bar"
+                    style={{ height: `${h}%`, animationDelay: `${i * 70}ms` }}
+                  />
+                ))}
+              </div>
+
+              {locked ? (
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    onClick={cancelLocked}
+                    aria-label="Cancel recording"
+                    className="grid h-9 w-9 place-items-center rounded-full text-flame transition active:scale-90"
+                  >
+                    <Trash2 size={18} aria-hidden="true" />
+                  </button>
+                  <button
+                    ref={stopBtnRef}
+                    onClick={stopLocked}
+                    aria-label="Stop and save recording"
+                    className="btn3d grid h-9 w-9 place-items-center rounded-full bg-accent text-on-accent"
+                    style={{ boxShadow: '0 3px 0 0 var(--accent-strong)' }}
+                  >
+                    <Square size={15} fill="currentColor" aria-hidden="true" />
+                  </button>
+                </div>
+              ) : (
+                <span
+                  className={`voice-cancel-hint flex shrink-0 items-center gap-1 text-sm font-semibold ${
+                    cancelArmed ? 'text-flame' : 'text-mute'
+                  }`}
+                  aria-hidden="true"
+                >
+                  <ChevronLeft size={16} aria-hidden="true" />
+                  {cancelArmed ? 'Release to cancel' : 'Slide to cancel'}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

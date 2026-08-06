@@ -289,6 +289,33 @@
   animation: bob 3s ease-in-out infinite;
 }
 
+/* Wrong-PIN feedback on the lock screen. Suppressed under reduced-motion by the
+   global rule below (animation-duration collapses to ~0). */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-10px);
+  }
+  30% {
+    transform: translateX(9px);
+  }
+  45% {
+    transform: translateX(-7px);
+  }
+  60% {
+    transform: translateX(5px);
+  }
+  75% {
+    transform: translateX(-3px);
+  }
+}
+.animate-shake {
+  animation: shake 0.4s ease-in-out both;
+}
+
 /* ---- Quiet success popup: calm, premium one-shot delight ---- */
 .animate-card-spring {
   animation: card-spring 0.42s var(--ease-spring) both;

@@ -1,5 +1,5 @@
 import type { Entry, Mood, Turn } from '../types'
-import { isConfigured, llmFollowUp, llmWeeklyInsight, loadSettings } from './llm'
+import { isConfigured, llmFollowUp, llmJournalNote, llmWeeklyInsight, loadSettings } from './llm'
 
 /**
  * Conversational + reflection engine.
@@ -13,35 +13,57 @@ import { isConfigured, llmFollowUp, llmWeeklyInsight, loadSettings } from './llm
 
 const MORNING = [
   'Morning. What’s the first thing on your mind?',
+  'Hey, good morning. How are you waking up today?',
   'Before the day runs off — what matters most today?',
-  'How did you sleep, and how are you arriving into today?',
+  'How did you sleep? And how are you arriving into today?',
+  'New day. What are you carrying into it?',
+  'Morning. Anything you’re looking forward to today?',
 ]
 const MIDDAY = [
-  'Quick check-in — how’s the day treating you so far?',
-  'What’s taking up the most space in your head right now?',
-  'Pause for a second. What are you feeling?',
+  'Hey — how’s the day treating you so far?',
+  'Quick check-in. Where’s your head at right now?',
+  'What’s taking up the most space in your head today?',
+  'Pause for a sec — what are you feeling right now?',
+  'Middle of the day. How are you holding up?',
+  'What’s the day been like so far?',
 ]
 const EVENING = [
-  'How was today, really?',
+  'Hey. How was today, really?',
   'What’s still on your mind from today?',
-  'One moment from today worth remembering?',
+  'One moment from today you want to hold onto?',
+  'How are you landing at the end of the day?',
+  'So — how’d today go?',
+  'What stuck with you from today?',
 ]
 const LATE = [
-  'Can’t switch off? What’s looping in your head?',
-  'What do you need to put down before sleep?',
+  'Still up? What’s on your mind?',
+  'Can’t switch off? What’s looping in there?',
+  'What do you want to put down before sleep?',
   'How are you, honestly, right now?',
+  'Late one. What’s keeping you company tonight?',
+  'What’s the last thing you’re thinking about tonight?',
 ]
 
-function pick<T>(arr: T[], seed = Date.now()): T {
-  return arr[Math.floor((seed / 60000) % arr.length)]
+/**
+ * Pick from a list, avoiding an immediate repeat of the last choice for that
+ * same list — so consecutive sessions don't feel canned.
+ */
+const lastPick = new WeakMap<object, number>()
+function vary<T>(arr: T[]): T {
+  if (arr.length <= 1) return arr[0]
+  const prev = lastPick.get(arr as object)
+  let i = Math.floor(Math.random() * arr.length)
+  if (i === prev) i = (i + 1) % arr.length
+  lastPick.set(arr as object, i)
+  return arr[i]
 }
 
 export function openingPrompt(): string {
   const h = new Date().getHours()
-  if (h < 11) return pick(MORNING)
-  if (h < 16) return pick(MIDDAY)
-  if (h < 22) return pick(EVENING)
-  return pick(LATE)
+  if (h < 11) return vary(MORNING)
+  if (h < 16) return vary(MIDDAY)
+  if (h < 22) return vary(EVENING)
+  return vary(LATE)
 }
 
 // ---------- Day context (so the conversation matches the chosen date) ----------
@@ -80,24 +102,39 @@ function dayRef(ctx: DayContext): string {
 
 const MOOD_OPENERS: Record<Mood, string[]> = {
   great: [
-    'Love that. What’s behind the good mood today?',
-    'That’s great to hear — what made today shine?',
+    'Oh I love that. What’s got today feeling so good?',
+    'Yes! What’s behind the great mood?',
+    'That’s wonderful to hear. What made today shine?',
+    'Amazing. What’s the best part been so far?',
+    'Ooh, tell me — what’s going right today?',
   ],
   good: [
-    'Nice. What’s going well for you today?',
-    'Good to hear. What’s one thing that lifted you?',
+    'Nice. What’s been going well?',
+    'Good to hear. What lifted you today?',
+    'Love that. What’s one thing that’s felt good?',
+    'That’s lovely. What’s put you in a good spot?',
+    'Glad today’s treating you kindly. What’s helped?',
   ],
   okay: [
-    'An okay day. What’s sitting in the middle for you?',
-    'Fair enough. What would tip today toward good?',
+    'An okay kind of day. What’s it been like?',
+    'Somewhere in the middle, huh. What’s going on?',
+    'Fair enough. What would’ve tipped it toward good?',
+    'Okay days count too. What’s on your mind?',
+    'Mm, a middling one. Anything pulling at you?',
   ],
   low: [
-    'Sounds like a bit of a grey day. What’s weighing on you?',
+    'Sounds like a bit of a grey one. What’s weighing on you?',
     'I hear you. What’s been dragging today down?',
+    'A low day. Want to tell me what’s going on?',
+    'That’s tough. What’s sitting heavy right now?',
+    'Sorry it’s a rough patch. What’s behind it?',
   ],
   rough: [
-    'That sounds hard. What happened today?',
-    'I’m here. What’s making today feel rough?',
+    'Oh, I’m sorry. What happened today?',
+    'That sounds really hard. What’s going on?',
+    'Hey, I’m here. What made today so rough?',
+    'Ugh, a rough one. Want to get into it?',
+    'That’s a lot. What’s hit you hardest today?',
   ],
 }
 
@@ -105,24 +142,34 @@ const MOOD_OPENERS: Record<Mood, string[]> = {
 // `%d` is replaced with a natural day reference ("yesterday" / "that day").
 const MOOD_OPENERS_PAST: Record<Mood, string[]> = {
   great: [
-    'Love that. What was behind the good mood %d?',
-    'Nice — what made %d shine?',
+    'Love that. What made %d so good?',
+    'Nice — what was behind the great mood %d?',
+    'That’s lovely. What stood out about %d?',
+    'Ooh, what made %d shine?',
   ],
   good: [
     'What was going well for you %d?',
     'What’s one thing that lifted you %d?',
+    'Sounds like a good one. What made %d feel that way?',
+    'What went right %d?',
   ],
   okay: [
-    'An okay day. What sat in the middle for you %d?',
+    'An okay day. What was %d like?',
+    'What sat in the middle for you %d?',
     'What would’ve tipped %d toward good?',
+    'Mm, a middling one. What was on your mind %d?',
   ],
   low: [
-    'Sounds like a grey day. What was weighing on you %d?',
+    'Sounds like %d was a grey one. What was weighing on you?',
     'What was dragging %d down?',
+    'A low day. What was going on %d?',
+    'What sat heavy %d?',
   ],
   rough: [
-    'That sounds hard. What happened %d?',
-    'What made %d feel rough?',
+    'I’m sorry — what happened %d?',
+    'That sounds hard. What made %d so rough?',
+    'What hit you hardest %d?',
+    'Rough one. Want to tell me about %d?',
   ],
 }
 
@@ -157,8 +204,8 @@ export async function getMoodOpener(mood: Mood, ctx: DayContext = TODAY_CTX): Pr
     }
   }
   await think
-  if (ctx.when === 'today') return pick(MOOD_OPENERS[mood])
-  return pick(MOOD_OPENERS_PAST[mood]).replaceAll('%d', dayRef(ctx))
+  if (ctx.when === 'today') return vary(MOOD_OPENERS[mood])
+  return vary(MOOD_OPENERS_PAST[mood]).replaceAll('%d', dayRef(ctx))
 }
 
 /** A note for the LLM so it answers in the right tense for a past day. */
@@ -182,49 +229,104 @@ function lastYou(turns: Turn[]): string {
   return (t?.text ?? '').toLowerCase()
 }
 
+/** Grab one salient word from the user's text so Mira can echo it back. */
+function reflectWord(text: string): string | null {
+  return extractThemes(text, 1)[0] ?? null
+}
+
 function localFollowUp(turns: Turn[], mood: Mood | null, ctx: DayContext = TODAY_CTX): string {
   const text = lastYou(turns)
   const youCount = turns.filter((t) => t.role === 'you').length
   const words = text.split(/\s+/).filter(Boolean)
-  const ref = dayRef(ctx)
   const past = ctx.when !== 'today'
 
-  // Wrap up gracefully after a couple of exchanges.
+  // Wrap up gently after a few exchanges — a friend knows when to let it rest.
   if (youCount >= 3) {
-    return 'Thanks for putting that into words. Anything you want to leave here before you go?'
+    return vary([
+      'Thanks for letting me in on all that. Anything else you want to get down before you go?',
+      'I’m really glad you wrote this out. Anything else sitting with you?',
+      'That’s a lot to carry — thanks for sharing it. Anything you want to leave here?',
+      'Good on you for putting words to it. Anything else on your mind?',
+    ])
+  }
+
+  // Very short reply — coax a little more, warmly.
+  if (words.length <= 4) {
+    return vary([
+      'Tell me a bit more?',
+      'Say more — what’s going on there?',
+      'Go on, I’m listening.',
+      'What’s the story behind that?',
+      'Mm — what’s that about?',
+    ])
   }
 
   const feeling = FEELING_WORDS.find((w) => text.includes(w))
   const person = PEOPLE_HINTS.find((w) => text.includes(w))
+  const word = reflectWord(text)
 
-  if (words.length <= 4) {
-    return 'Say a little more — what’s behind that?'
-  }
   if (feeling) {
-    return `You mentioned feeling ${feeling}. When did that start ${ref}?`
+    return vary([
+      `${feeling.charAt(0).toUpperCase() + feeling.slice(1)} — yeah. What’s bringing that up?`,
+      `Where’s the ${feeling} coming from, do you think?`,
+      `That ${feeling} feeling — when did it creep in?`,
+      `Makes sense you’d feel ${feeling}. What’s underneath it?`,
+    ])
   }
   if (person) {
-    return past
-      ? `What role did your ${person} play in how you felt?`
-      : `What role did your ${person} play in how you’re feeling?`
+    return vary([
+      past
+        ? `How were things with your ${person} that day?`
+        : `How are things with your ${person} right now?`,
+      `What’s your ${person} got to do with how you’re feeling?`,
+      `Tell me more about your ${person} in all this.`,
+    ])
   }
   if (text.includes('work') || text.includes('meeting') || text.includes('project')) {
-    return `What part of that ${past ? 'was' : 'is'} actually in your control?`
+    return vary([
+      'Sounds like work’s taking up space. What part’s weighing on you most?',
+      `What’s the hardest bit of that to ${past ? 'have sat' : 'sit'} with?`,
+      'Is this a one-off, or has it been building for a while?',
+    ])
   }
   if (text.includes('because') || text.includes('so ')) {
-    return past
-      ? 'And how do you feel about that now, looking back?'
-      : 'And how do you feel about that now, sitting with it?'
+    return vary([
+      'And how are you feeling about that now?',
+      'Where does that leave you?',
+      'How’s that sitting with you?',
+      'Yeah — what does that stir up?',
+    ])
   }
   if (mood === 'rough' || mood === 'low') {
-    return past
-      ? `That sounds heavy. What would’ve made ${ref} 1% lighter?`
-      : 'That sounds heavy. What would make tonight 1% lighter?'
+    return vary([
+      past
+        ? 'That sounds like a lot to have gone through. What helped you get through it?'
+        : 'That sounds like a lot. What’s one small thing that might help right now?',
+      'I’m sorry — that’s heavy. What do you need most right now?',
+      'That’s hard. Is there anything that’d make it feel a little lighter?',
+    ])
   }
   if (mood === 'great' || mood === 'good') {
-    return 'Love that. What made it land the way it did?'
+    return vary([
+      'Love that. What made it feel so good?',
+      'That’s lovely. What made it land the way it did?',
+      'Nice — what do you want to remember about it?',
+    ])
   }
-  return 'What’s underneath that, if you dig a little?'
+  // Neutral default — reflect a word back when we can, otherwise stay curious.
+  if (word) {
+    return vary([
+      `“${word}” stands out there. Say more about that?`,
+      `What’s the ${word} part really about for you?`,
+      `Tell me more about the ${word} side of it.`,
+    ])
+  }
+  return vary([
+    'What else is there, if you keep going?',
+    'What part do you keep coming back to?',
+    'What stands out most about that?',
+    'And then what?',
+  ])
 }
 
 // ---------- Reflection / summary ----------
@@ -263,6 +365,116 @@ export function summarize(turns: Turn[]): string {
     .join(' ')
   const first = youText.split(/(?<=[.!?])\s/)[0] ?? youText
   return first.length > 120 ? first.slice(0, 117) + '…' : first
+}
+
+// ---------- Journal note (first-person narrative recap) ----------
+
+// Mood-aware opening line for a note, in the user's own voice. `%D` is replaced
+// with a sentence-start day word ("Today" / "Yesterday" / "That day").
+const NOTE_LEAD: Record<Mood, { now: string[]; past: string[] }> = {
+  great: {
+    now: ['%D has been a really good one.', '%D feels great.', 'Honestly, %D has been lovely.'],
+    past: ['%D was a really good one.', '%D was great.', 'Looking back, %D was lovely.'],
+  },
+  good: {
+    now: ['%D is a good day.', '%D has been treating me kindly.', 'A good %D so far.'],
+    past: ['%D was a good day.', '%D treated me kindly.', 'A good one, %D.'],
+  },
+  okay: {
+    now: ['%D is an okay day — nothing dramatic.', '%D sits somewhere in the middle.'],
+    past: ['%D was an okay day — nothing dramatic.', '%D sat somewhere in the middle.'],
+  },
+  low: {
+    now: ['%D has been a bit of a low one.', '%D feels heavier than I’d like.'],
+    past: ['%D was a bit of a low one.', '%D felt heavy.'],
+  },
+  rough: {
+    now: ['%D has been rough.', '%D has been a hard one.'],
+    past: ['%D was rough.', '%D was a hard one.'],
+  },
+}
+
+// Optional closing line by mood. Empty strings mean "sometimes no closer".
+const NOTE_CLOSE: Record<Mood, string[]> = {
+  great: ['Want to hold onto this one.', 'Days like this are worth remembering.', ''],
+  good: ['A good note to end on.', 'Quietly grateful for it.', ''],
+  okay: ['', 'Onward.', ''],
+  low: ['Trying to be gentle with myself.', 'Hoping the next one feels lighter.', ''],
+  rough: ['Just glad I got it down.', 'Being kind to myself where I can.', ''],
+}
+
+/** Stitch the user's own sentences into a clean, readable body (max 3 sentences). */
+function userBody(text: string): string {
+  const sentences = text
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+  let body = sentences.join(' ')
+  if (!body) return ''
+  body = body.charAt(0).toUpperCase() + body.slice(1)
+  if (!/[.!?]$/.test(body)) body += '.'
+  return body
+}
+
+/** Offline, first-person note composed from the user's own words + mood. */
+function localNote(turns: Turn[], mood: Mood | null, ctx: DayContext): string {
+  const userText = turns
+    .filter((t) => t.role === 'you' && t.kind !== 'mood')
+    .map((t) => t.text.trim())
+    .filter(Boolean)
+    .join(' ')
+
+  const dayWord = ctx.when === 'today' ? 'Today' : ctx.when === 'yesterday' ? 'Yesterday' : 'That day'
+  const past = ctx.when !== 'today'
+  const parts: string[] = []
+
+  if (mood) {
+    parts.push(vary(NOTE_LEAD[mood][past ? 'past' : 'now']).replaceAll('%D', dayWord))
+  }
+
+  if (userText) {
+    parts.push(userBody(userText))
+  } else if (mood) {
+    parts.push(
+      vary([
+        'I didn’t have many words for it, but I wanted to check in.',
+        'Not much to put into words today, but I noticed how I felt.',
+        'I’ll leave it at that for now.',
+      ]),
+    )
+  }
+
+  if (mood) {
+    const close = vary(NOTE_CLOSE[mood])
+    if (close) parts.push(close)
+  }
+
+  const note = parts.join(' ').trim()
+  if (note) return note
+  return userText ? userBody(userText) : 'A quiet check-in.'
+}
+
+/**
+ * Build a warm, first-person "journal note" for an entry.
+ * Uses the configured LLM when available, otherwise a solid offline composer.
+ */
+export async function generateNote(
+  turns: Turn[],
+  mood: Mood | null,
+  ctx: DayContext = TODAY_CTX,
+): Promise<string> {
+  const settings = loadSettings()
+  if (isConfigured(settings)) {
+    try {
+      const note = await llmJournalNote(settings, turns, pastContext(ctx))
+      const clean = note.replace(/^["']|["']$/g, '').trim()
+      if (clean) return clean
+    } catch {
+      /* fall through to the offline composer */
+    }
+  }
+  return localNote(turns, mood, ctx)
 }
 
 export interface WeeklyReflection {

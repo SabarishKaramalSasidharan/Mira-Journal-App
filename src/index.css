@@ -33,6 +33,21 @@
   --mood-good: #4ecb71;
   --mood-great: #ffc53d;
 
+  /* Mood-face droplet BODY gradient (top → bottom) per valence level.
+     Shape = brand (droplet + shine), COLOR = valence: a cool→warm ramp
+     (indigo → blue → teal → green → amber). Mid-tone fills keep the dark
+     mascot ink legible AND stay distinct in grayscale / colorblind views. */
+  --mf-l0-top: #a5adf7; /* Rough — periwinkle/indigo */
+  --mf-l0-bottom: #7b88f2;
+  --mf-l1-top: #8ec2f9; /* Low — sky blue */
+  --mf-l1-bottom: #5a9cf2;
+  --mf-l2-top: #3ad8bf; /* Okay — brand teal (Mira's neutral) */
+  --mf-l2-bottom: #12b7a1;
+  --mf-l3-top: #7ede9a; /* Good — green */
+  --mf-l3-bottom: #41c268;
+  --mf-l4-top: #ffcf57; /* Great — warm amber/gold */
+  --mf-l4-bottom: #f6a81f;
+
   /* Elevation */
   --shadow-sm: 0 1px 2px rgba(16, 34, 31, 0.06);
   --shadow-md: 0 8px 24px -8px rgba(16, 34, 31, 0.16);
@@ -64,6 +79,19 @@
   --mood-okay: #2dd4bf;
   --mood-good: #63d488;
   --mood-great: #ffcf5a;
+
+  /* Brighter bodies so the droplet pops on the dark surfaces; the dark ink
+     still reads with plenty of contrast against these lighter fills. */
+  --mf-l0-top: #b3baf9;
+  --mf-l0-bottom: #8b97f5;
+  --mf-l1-top: #9cc8f9;
+  --mf-l1-bottom: #7ab4f7;
+  --mf-l2-top: #4ee4cc;
+  --mf-l2-bottom: #2dd4bf;
+  --mf-l3-top: #8ee6a6;
+  --mf-l3-bottom: #63d488;
+  --mf-l4-top: #ffdc86;
+  --mf-l4-bottom: #ffbf3a;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.5);

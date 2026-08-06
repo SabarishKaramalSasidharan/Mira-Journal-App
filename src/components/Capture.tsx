@@ -14,10 +14,14 @@ import {
 } from 'lucide-react'
 import type { Entry, Mood, Turn } from '../types'
 import { MOODS } from '../types'
-import { dayContext, getFollowUp, getMoodOpener, openingPrompt, extractThemes, summarize } from '../lib/ai'
+import { dayContext, getEmotionFollowUp, getFollowUp, getMoodOpener, openingPrompt, extractThemes, summarize } from '../lib/ai'
 import { useSpeech } from '../lib/useSpeech'
 import Mascot from './Mascot'
+import { MoodFace, EmotionFace } from './MoodFace'
+import { EmotionPicker } from './EmotionPicker'
+import { getEmotion } from '../lib/emotions'
 import { moodToExpression, type MascotMood } from '../lib/mascotMood'
+import type { SelectorStyle } from '../lib/selectorStyle'
 import DatePicker from './DatePicker'
 import '../styles/voice.css'
 
@@ -40,6 +44,8 @@ interface Props {
   onAutoSave: (entry: Entry) => void
   /** Finalizes the entry and triggers the success moment. */
   onFinish: (entry: Entry) => void
+  /** Which mood selector to render: the new Hybrid "faces" or classic "weather". */
+  selectorStyle: SelectorStyle
 }
 
 const DAY = 86400000
@@ -63,12 +69,18 @@ function dateLabel(d: Date): string {
   })
 }
 
-export default function Capture({ onAutoSave, onFinish }: Props) {
+export default function Capture({ onAutoSave, onFinish, selectorStyle }: Props) {
   const [prompt] = useState(openingPrompt)
   const [turns, setTurns] = useState<Turn[]>([{ role: 'mira', text: prompt }])
   const [draft, setDraft] = useState('')
   const [mood, setMood] = useState<Mood | null>(null)
+  // Optional categorical emotion tag (Hybrid selector, step 2). Independent of
+  // the 1–5 `mood` score, so it never affects the trend chart.
+  const [emotion, setEmotion] = useState<string | null>(null)
   const [moodOpened, setMoodOpened] = useState(false)
+  // One feeling per conversation: once picked, the "Add a feeling?" block
+  // collapses (mirrors `moodOpened` hiding the 1–5 ladder after a valence tap).
+  const [emotionOpened, setEmotionOpened] = useState(false)
   const [thinking, setThinking] = useState(false)
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
 
@@ -104,7 +116,9 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
     setTurns([{ role: 'mira', text: greetingFor(next) }])
     setDraft('')
     setMood(null)
+    setEmotion(null)
     setMoodOpened(false)
+    setEmotionOpened(false)
     setThinking(false)
     // …and drop this entry's identity so the new date persists as its own entry.
     entryId.current = null
@@ -291,6 +305,30 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
     // can read Mira's reply first, then tap the box when they're ready to type.
   }
 
+  // Optional emotion tag (step 2 of the Hybrid selector). Mirrors the valence
+  // pick: one feeling per conversation, so choosing collapses the picker and
+  // posts a USER chat bubble (droplet face + label). It then triggers an
+  // emotion-specific Mira follow-up, reusing the same typing-indicator + async
+  // append pattern as send()/selectMood. The auto-save effect persists `emotion`.
+  const selectEmotion = async (id: string | null) => {
+    // One feeling per conversation; ignore clears; don't fire mid-typing so we
+    // can't stack onto (or race with) the valence opener still being composed.
+    if (emotionOpened || !id || thinking) return
+    const meta = getEmotion(id)
+    if (!meta) return
+    setEmotion(id)
+    setEmotionOpened(true)
+    // The tapped feeling shows up as your message…
+    const next: Turn[] = [...turns, { role: 'you', kind: 'emotion', emotion: id, text: meta.label }]
+    setTurns(next)
+    // …then Mira follows up, tailored to that emotion.
+    setThinking(true)
+    const q = await getEmotionFollowUp(id, { turns: next, mood, dayContext: dayContext(selectedDate) })
+    setThinking(false)
+    setTurns((t) => [...t, { role: 'mira', text: q }])
+    // No focus grab — let people read Mira's reply before the keyboard opens.
+  }
+
   const send = async () => {
     const text = draft.trim()
     if (!text || thinking) return
@@ -308,10 +346,16 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
   // Build the entry from the current turns/mood, reusing a stable id + timestamp
   // so repeated auto-saves overwrite the same record. Returns null when there's
   // nothing worth saving yet (no mood and no written text).
-  const buildEntry = (currTurns: Turn[], currMood: Mood | null): Entry | null => {
-    const textTurns = currTurns.filter((t) => t.role === 'you' && t.kind !== 'mood')
+  const buildEntry = (currTurns: Turn[], currMood: Mood | null, currEmotion: string | null): Entry | null => {
+    const textTurns = currTurns.filter(
+      (t) => t.role === 'you' && t.kind !== 'mood' && t.kind !== 'emotion',
+    )
     const youText = textTurns.map((t) => t.text).join(' ')
     if (!youText && !currMood) return null
+    // The emotion bubble is a live conversational affordance only; `emotion`
+    // below is the persisted source of truth, so keep these transient turns out
+    // of the saved transcript (mirrors how mood turns are handled downstream).
+    const savedTurns = currTurns.filter((t) => t.kind !== 'emotion')
     if (!entryId.current) {
       entryId.current = crypto.randomUUID()
       // Save under the selected date, keeping the current time-of-day for ordering.
@@ -325,25 +369,27 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
       id: entryId.current,
       createdAt: createdAt.current!,
       mood: currMood,
-      turns: currTurns,
+      turns: savedTurns,
       themes: extractThemes(youText),
-      summary: youText ? summarize(currTurns) : `Checked in — feeling ${moodLabel ?? 'okay'}`,
+      summary: youText ? summarize(savedTurns) : `Checked in — feeling ${moodLabel ?? 'okay'}`,
+      // Optional tag — omitted entirely when unset so untagged entries stay clean.
+      ...(currEmotion ? { emotion: currEmotion } : {}),
     }
   }
 
   // Auto-save whenever the conversation changes — nothing is ever lost.
   useEffect(() => {
-    const entry = buildEntry(turns, mood)
+    const entry = buildEntry(turns, mood, emotion)
     if (entry) {
       autoSaveRef.current(entry)
       setSaved(true)
       setSavedTick((n) => n + 1) // re-triggers the little "saved" pulse
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [turns, mood])
+  }, [turns, mood, emotion])
 
   const finish = () => {
-    const entry = buildEntry(turns, mood)
+    const entry = buildEntry(turns, mood, emotion)
     if (!entry) return
     onFinish(entry)
   }
@@ -436,32 +482,83 @@ export default function Capture({ onAutoSave, onFinish }: Props) {
         {thinking && <Typing />}
       </div>
 
-      {/* Quick mood log — one tap logs a mood, then this row collapses away.
-          One entry = one mood, so we don't stack multiple moods per conversation. */}
-      {!moodOpened && (
-        <div className="px-4 pt-1">
-          <div className="mb-1.5 px-1">
-            <span
-              className={`animate-rise text-xs font-semibold ${!hasWritten ? 'text-accent-text' : 'text-soft'}`}
-            >
-              {moodLabel}
-            </span>
+      {/* Mood selector. In "faces" (Hybrid) mode this is a two-step flow: the
+          1–5 mascot ladder first, then an optional emotion tag. In "weather"
+          mode it's the classic one-tap emoji scale. One entry = one valence, so
+          the ladder collapses after a tap (same behavior in both styles). */}
+      {selectorStyle === 'faces' ? (
+        // Hidden entirely once both steps are done (valence picked + feeling
+        // chosen or skipped by finishing) so no empty padding lingers.
+        (!moodOpened || !emotionOpened) && (
+          <div className="px-4 pt-1">
+            {!moodOpened ? (
+              /* Step 1 — 1–5 mascot ladder */
+              <>
+                <div className="mb-1.5 px-1">
+                  <span
+                    className={`animate-rise text-xs font-semibold ${!hasWritten ? 'text-accent-text' : 'text-soft'}`}
+                  >
+                    {moodLabel}
+                  </span>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {MOODS.map((m, i) => (
+                    <button
+                      key={m.key}
+                      onClick={() => selectMood(m.key)}
+                      className="animate-rise flex flex-col items-center gap-1 rounded-2xl px-1 py-2 ring-1 ring-border transition-all active:scale-90"
+                      style={{ background: 'var(--surface-2)', animationDelay: `${i * 40}ms` }}
+                      title={m.label}
+                      aria-label={`${m.label} — rate your day ${i + 1} of 5`}
+                    >
+                      <MoodFace mood={m.key} size={34} decorative className={!hasWritten ? '' : 'opacity-70'} />
+                      <span
+                        className={`text-[11px] font-semibold ${!hasWritten ? 'text-content' : 'text-mute'}`}
+                      >
+                        {m.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              /* Step 2 — optional emotion tag (skippable). Collapses after a
+                 pick, one feeling per conversation. */
+              <div className="animate-rise">
+                <div className="mb-1.5 px-1">
+                  <span className="text-xs font-semibold text-soft">Add a feeling? (optional)</span>
+                </div>
+                <EmotionPicker value={emotion} onChange={selectEmotion} />
+              </div>
+            )}
           </div>
-          <div className="grid grid-cols-5 gap-1.5">
-            {MOODS.map((m, i) => (
-              <button
-                key={m.key}
-                onClick={() => selectMood(m.key)}
-                className="animate-rise grid h-12 place-items-center rounded-2xl text-2xl ring-1 ring-border transition-all active:scale-90"
-                style={{ background: 'var(--surface-2)', animationDelay: `${i * 40}ms` }}
-                title={m.label}
-                aria-label={m.label}
+        )
+      ) : (
+        !moodOpened && (
+          <div className="px-4 pt-1">
+            <div className="mb-1.5 px-1">
+              <span
+                className={`animate-rise text-xs font-semibold ${!hasWritten ? 'text-accent-text' : 'text-soft'}`}
               >
-                <span className={!hasWritten ? '' : 'opacity-60'}>{m.emoji}</span>
-              </button>
-            ))}
+                {moodLabel}
+              </span>
+            </div>
+            <div className="grid grid-cols-5 gap-1.5">
+              {MOODS.map((m, i) => (
+                <button
+                  key={m.key}
+                  onClick={() => selectMood(m.key)}
+                  className="animate-rise grid h-12 place-items-center rounded-2xl text-2xl ring-1 ring-border transition-all active:scale-90"
+                  style={{ background: 'var(--surface-2)', animationDelay: `${i * 40}ms` }}
+                  title={m.label}
+                  aria-label={m.label}
+                >
+                  <span className={!hasWritten ? '' : 'opacity-60'}>{m.emoji}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {/* Composer */}
@@ -670,6 +767,22 @@ function Bubble({ turn, miraMood }: { turn: Turn; miraMood: MascotMood }) {
     return (
       <div className="flex animate-pop justify-end">
         <div className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-on-accent shadow-sm">
+          {turn.text}
+        </div>
+      </div>
+    )
+  }
+
+  // Optional feeling tag posted as a user bubble — same right-aligned accent
+  // pill as the mood turn, with the droplet face on a light chip so the teal
+  // body stays legible, plus the always-visible text label.
+  if (turn.kind === 'emotion') {
+    return (
+      <div className="flex animate-pop justify-end">
+        <div className="flex items-center gap-1.5 rounded-full bg-accent py-1.5 pl-1.5 pr-4 text-sm font-semibold text-on-accent shadow-sm">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent-soft">
+            <EmotionFace emotion={turn.emotion ?? ''} size={22} decorative />
+          </span>
           {turn.text}
         </div>
       </div>

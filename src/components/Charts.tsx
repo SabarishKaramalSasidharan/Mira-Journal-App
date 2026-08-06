@@ -3,6 +3,8 @@ import { ChevronRight } from 'lucide-react'
 import { MOODS, type Mood } from '../types'
 import type { Entry } from '../types'
 import { moodSeriesRange, type MoodRange, type ThemeCount } from '../lib/ai'
+import { emotionCounts } from '../lib/emotions'
+import { EmotionFace } from './MoodFace'
 
 const SCORE_MOOD: Mood[] = ['rough', 'low', 'okay', 'good', 'great']
 const moodForScore = (s: number) => SCORE_MOOD[Math.max(0, Math.min(4, Math.round(s) - 1))]
@@ -179,6 +181,44 @@ export function MoodTrend({ entries }: { entries: Entry[] }) {
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+/**
+ * "Emotions you felt" — a simple frequency breakdown of the optional emotion
+ * tags (independent of the 1–5 valence trend above). Renders nothing until at
+ * least one entry carries an emotion, so it stays out of the way otherwise.
+ * Each row pairs the mascot face + text label + count (never color alone).
+ */
+export function EmotionBreakdown({ entries }: { entries: Entry[] }) {
+  const data = emotionCounts(entries)
+  if (data.length === 0) return null
+  const maxCount = Math.max(...data.map((d) => d.count))
+
+  return (
+    <div className="rounded-2xl bg-surface p-4 shadow-sm">
+      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-mute">
+        Emotions you felt
+      </div>
+      <p className="mb-3 text-xs font-medium text-mute">The feelings you tagged, most often first.</p>
+      <div className="space-y-1">
+        {data.map((d) => (
+          <div key={d.emotion.id} className="flex items-center gap-3 px-1.5 py-1">
+            <EmotionFace emotion={d.emotion.id} size={26} decorative />
+            <span className="w-24 shrink-0 truncate text-sm font-semibold text-content">
+              {d.emotion.label}
+            </span>
+            <div className="h-3 flex-1 overflow-hidden rounded-full bg-surface-2">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${12 + (d.count / maxCount) * 88}%`, background: d.emotion.color }}
+              />
+            </div>
+            <span className="w-4 text-right text-xs font-semibold text-mute">{d.count}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

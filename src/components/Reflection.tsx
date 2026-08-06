@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Entry } from '../types'
 import { getWeeklyInsight, themeCounts, weeklyReflection } from '../lib/ai'
-import { MoodTrend, ThemeBars } from './Charts'
+import { MoodTrend, ThemeBars, EmotionBreakdown } from './Charts'
 import WeeklyRecap from './WeeklyRecap'
 import Mascot from './Mascot'
 
@@ -52,6 +52,9 @@ export default function Reflection({ entries, onSelectTheme }: Props) {
 
           {/* One mood section: trend chart with a built-in range filter. */}
           <MoodTrend entries={entries} />
+
+          {/* Optional emotion-tag breakdown — only appears once tags exist. */}
+          <EmotionBreakdown entries={entries} />
 
           {/* One theme section — tap a theme to see the entries behind it. */}
           <ThemeBars data={themes} onSelect={onSelectTheme} />

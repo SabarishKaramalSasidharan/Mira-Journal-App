@@ -13,6 +13,7 @@ import {
 } from './lib/storage'
 import { loadSettings } from './lib/llm'
 import { applyTheme, loadTheme, setTheme, watchSystem, type ThemeMode } from './lib/theme'
+import { loadSelectorStyle, saveSelectorStyle, type SelectorStyle } from './lib/selectorStyle'
 import Capture from './components/Capture'
 import Timeline from './components/Timeline'
 import Reflection from './components/Reflection'
@@ -73,6 +74,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState(() => loadSettings())
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => loadTheme())
+  const [selectorStyle, setSelectorStyle] = useState<SelectorStyle>(() => loadSelectorStyle())
   const [success, setSuccess] = useState<SuccessState | null>(null)
   const [showStreak, setShowStreak] = useState(false)
   const [journalTheme, setJournalTheme] = useState<string | null>(null)
@@ -118,6 +120,11 @@ export default function App() {
   const changeTheme = (m: ThemeMode) => {
     setThemeMode(m)
     setTheme(m)
+  }
+
+  const changeSelectorStyle = (s: SelectorStyle) => {
+    setSelectorStyle(s)
+    saveSelectorStyle(s)
   }
 
   useEffect(() => {
@@ -260,7 +267,12 @@ export default function App() {
         {/* Body */}
         <main className="min-h-0 flex-1">
           {tab === 'write' && (
-            <Capture key={captureKey} onAutoSave={handleAutoSave} onFinish={handleFinish} />
+            <Capture
+              key={captureKey}
+              onAutoSave={handleAutoSave}
+              onFinish={handleFinish}
+              selectorStyle={selectorStyle}
+            />
           )}
           {tab === 'journal' && (
             <Timeline
@@ -270,6 +282,7 @@ export default function App() {
               filterTheme={journalTheme}
               onSelectTheme={setJournalTheme}
               onClearFilter={() => setJournalTheme(null)}
+              selectorStyle={selectorStyle}
             />
           )}
           {tab === 'reflect' && <Reflection entries={entries} onSelectTheme={openTheme} />}
@@ -302,6 +315,7 @@ export default function App() {
             onClose={() => setOpenEntry(null)}
             onSave={handleEditSaved}
             onDelete={handleDelete}
+            selectorStyle={selectorStyle}
           />
         )}
 
@@ -310,6 +324,8 @@ export default function App() {
             initial={settings}
             themeMode={themeMode}
             onThemeChange={changeTheme}
+            selectorStyle={selectorStyle}
+            onSelectorStyleChange={changeSelectorStyle}
             onClose={() => setShowSettings(false)}
             onSaved={setSettings}
             entries={entries}

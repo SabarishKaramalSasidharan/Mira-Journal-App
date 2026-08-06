@@ -1,5 +1,6 @@
 import type { Entry, Mood, Turn } from '../types'
 import { isConfigured, llmFollowUp, llmJournalNote, llmWeeklyInsight, loadSettings } from './llm'
+import { getEmotion } from './emotions'
 
 /**
  * Conversational + reflection engine.
@@ -327,6 +328,225 @@ function localFollowUp(turns: Turn[], mood: Mood | null, ctx: DayContext = TODAY
     'What stands out most about that?',
     'And then what?',
   ])
+}
+
+// ---------- Emotion-tag follow-ups (Hybrid "Faces" selector, step 2) ----------
+
+/**
+ * Per-emotion follow-up variants for the offline engine. Each feeling gets a
+ * distinct, warm, friend-like response (never clinical). Present tense here;
+ * `%d` in the *_PAST maps is swapped for a natural day reference. Keep 3–5
+ * variants each so `vary()` can avoid immediate repeats.
+ */
+const EMOTION_FOLLOWUPS: Record<string, string[]> = {
+  joy: [
+    'Ah, that’s the good stuff. What’s got you glowing today?',
+    'Love seeing you like this — what’s behind the joy?',
+    'Yes! What’s making today feel so bright?',
+    'That’s lovely. What sparked it?',
+  ],
+  calm: [
+    'Mm, that’s a nice place to be. What’s helping you feel settled?',
+    'Calm suits you. What’s brought the quiet on?',
+    'Love that steadiness — what’s behind it today?',
+    'Nice and even. What’s letting you breathe easy?',
+  ],
+  sad: [
+    'I’m sorry you’re feeling that. What’s weighing on you?',
+    'Aw, that’s tender. What’s behind the sadness?',
+    'Hey, I’m here. What’s making today feel heavy?',
+    'That’s a lot to sit with. What’s going on?',
+  ],
+  anxious: [
+    'What’s got you on edge right now?',
+    'Ugh, that restless feeling. What’s stirring it up?',
+    'I hear you. What’s your mind circling around?',
+    'That buzzy, wound-up feeling — what’s behind it?',
+  ],
+  love: [
+    'Aw — who or what’s bringing that on?',
+    'That’s the best feeling. Who’s on your mind?',
+    'Love that for you. What’s filling you up?',
+    'Ooh. What’s got your heart full today?',
+  ],
+  hope: [
+    'Ooh, hope’s a good one. What’s got you looking up?',
+    'I like that. What are you hoping for?',
+    'What’s got that little spark going?',
+    'That’s lovely — what’s feeling possible?',
+  ],
+  gratitude: [
+    'That’s lovely. What are you thankful for right now?',
+    'Aw. What’s got you feeling grateful today?',
+    'Love that. What’s worth holding onto?',
+    'Nice — what’s filled your cup today?',
+  ],
+  excited: [
+    'Ooh, tell me! What’s got you buzzing?',
+    'Yes! What are you excited about?',
+    'I can feel the energy — what’s coming up?',
+    'Love that spark. What’s got you fired up?',
+  ],
+  content: [
+    'That’s a good place to be. What’s feeling right today?',
+    'Mm, content. What’s settled into place?',
+    'Love that ease — what’s behind it?',
+    'Nice and steady. What’s sitting well with you?',
+  ],
+  lonely: [
+    'That’s a heavy one. What’s the loneliness feeling like today?',
+    'I’m here with you. What’s making it feel so quiet?',
+    'Aw. When did the lonely feeling creep in?',
+    'That’s hard. What are you missing right now?',
+  ],
+  guilt: [
+    'That’s a tough one to sit with. What’s it about?',
+    'Go easy on yourself — what’s the guilt tied to?',
+    'Hey, what happened that’s weighing on you?',
+    'No judgment here. What’s pulling at you?',
+  ],
+  empty: [
+    'That flat, empty feeling — I hear you. What’s it like right now?',
+    'Aw. When did the emptiness settle in?',
+    'That’s hard. What’s feeling missing today?',
+    'Running on empty, huh. What’s drained you?',
+  ],
+  envy: [
+    'Ha, that’s a very human one. What’s someone got that you’re wanting?',
+    'No judgment — what’s stirring the envy?',
+    'What’s the envy pointing at, you think?',
+    'That itch of wanting — what’s it about?',
+  ],
+  frustrated: [
+    'Ugh, what’s getting under your skin?',
+    'That’s grating. What’s winding you up?',
+    'What’s the frustrating part right now?',
+    'I hear it. What’s not going your way?',
+  ],
+  embarrassed: [
+    'Oof, cringe. What happened?',
+    'Aw, we’ve all been there. What’s got you red-faced?',
+    'What’s the bit replaying in your head?',
+    'Ha, that squirmy feeling. What set it off?',
+  ],
+  bored: [
+    'Ha, a bit of nothing, huh. What’s the day been like?',
+    'Restless and flat at once? What’s missing today?',
+    'Mm, a meh mood. What would shake it up?',
+    'That empty-hours feeling. What are you craving?',
+  ],
+}
+
+const EMOTION_FOLLOWUPS_PAST: Record<string, string[]> = {
+  joy: [
+    'Love that. What made %d feel so good?',
+    'What sparked the joy %d?',
+    'What was the bright spot of %d?',
+  ],
+  calm: [
+    'What helped you feel settled %d?',
+    'What brought the calm on %d?',
+    'What let you breathe easy %d?',
+  ],
+  sad: [
+    'I’m sorry — what was weighing on you %d?',
+    'What made %d feel so heavy?',
+    'What was behind the sadness %d?',
+  ],
+  anxious: [
+    'What had you on edge %d?',
+    'What was your mind circling %d?',
+    'What was stirring the anxiety %d?',
+  ],
+  love: [
+    'Aw — who or what brought that on %d?',
+    'Who was on your mind %d?',
+    'What had your heart full %d?',
+  ],
+  hope: [
+    'What had you looking up %d?',
+    'What were you hoping for %d?',
+    'What felt possible %d?',
+  ],
+  gratitude: [
+    'What were you thankful for %d?',
+    'What made you feel grateful %d?',
+    'What filled your cup %d?',
+  ],
+  excited: [
+    'What had you buzzing %d?',
+    'What were you excited about %d?',
+    'What got you fired up %d?',
+  ],
+  content: [
+    'What felt right %d?',
+    'What settled into place %d?',
+    'What sat well with you %d?',
+  ],
+  lonely: [
+    'What made %d feel so lonely?',
+    'When did the lonely feeling creep in %d?',
+    'What were you missing %d?',
+  ],
+  guilt: [
+    'What was the guilt tied to %d?',
+    'What happened %d that weighed on you?',
+    'What was pulling at you %d?',
+  ],
+  empty: [
+    'What made %d feel so empty?',
+    'What was missing %d?',
+    'What drained you %d?',
+  ],
+  envy: [
+    'What stirred the envy %d?',
+    'What were you wanting %d?',
+    'What was it pointing at %d?',
+  ],
+  frustrated: [
+    'What got under your skin %d?',
+    'What wound you up %d?',
+    'What wasn’t going your way %d?',
+  ],
+  embarrassed: [
+    'Oof — what happened %d?',
+    'What got you red-faced %d?',
+    'What set that off %d?',
+  ],
+  bored: [
+    'What was %d like — a bit of nothing?',
+    'What was missing %d?',
+    'What were you craving %d?',
+  ],
+}
+
+// Sensible generic fallback for any emotion without a specific list.
+const EMOTION_FOLLOWUP_GENERIC = [
+  'What’s bringing that feeling up for you?',
+  'Say more — what’s behind that?',
+  'What’s that feeling about today?',
+  'Tell me a bit more — what’s going on?',
+]
+const EMOTION_FOLLOWUP_GENERIC_PAST = [
+  'What brought that feeling up %d?',
+  'What was that about %d?',
+  'What was going on %d?',
+]
+
+/** Offline, per-emotion follow-up. Warm, specific, tense-aware, anti-repeat. */
+function localEmotionFollowUp(emotionId: string, ctx: DayContext = TODAY_CTX): string {
+  if (ctx.when === 'today') {
+    return vary(EMOTION_FOLLOWUPS[emotionId] ?? EMOTION_FOLLOWUP_GENERIC)
+  }
+  const past = EMOTION_FOLLOWUPS_PAST[emotionId] ?? EMOTION_FOLLOWUP_GENERIC_PAST
+  return vary(past).replaceAll('%d', dayRef(ctx))
+}
+
+/** A context note so the LLM answers the chosen feeling specifically. */
+function emotionContext(label: string, ctx: DayContext): string {
+  const base = `The user just tagged how they're feeling as "${label}". Respond specifically and warmly to that feeling — acknowledge it and gently invite them to say a little more, in one short, friend-like line.`
+  const past = pastContext(ctx)
+  return past ? `${base} ${past}` : base
 }
 
 // ---------- Reflection / summary ----------
@@ -665,6 +885,51 @@ export async function getFollowUp(
   }
   await think
   return localFollowUp(turns, mood, ctx)
+}
+
+export interface EmotionFollowUpArgs {
+  turns: Turn[]
+  mood: Mood | null
+  dayContext?: DayContext
+}
+
+/**
+ * Emotion-aware follow-up for the Hybrid selector's step-2 tag. When an LLM is
+ * configured we pass the chosen feeling (label) + recent conversation + day
+ * context so Mira responds specifically to that emotion; otherwise we fall back
+ * to a warm, per-emotion offline set. Signature is additive — existing
+ * follow-up helpers are untouched.
+ */
+export async function getEmotionFollowUp(
+  emotionId: string,
+  { turns, dayContext: ctx = TODAY_CTX }: EmotionFollowUpArgs,
+): Promise<string> {
+  const think = new Promise((r) => setTimeout(r, 350 + Math.random() * 250))
+  const label = getEmotion(emotionId)?.label ?? emotionId
+  const settings = loadSettings()
+  if (isConfigured(settings)) {
+    try {
+      const verb = ctx.when === 'today' ? "I'm feeling" : 'I was feeling'
+      const whenPhrase =
+        ctx.when === 'today' ? 'today' : ctx.when === 'yesterday' ? 'yesterday' : `on ${ctx.label}`
+      // The emotion bubble carries only the bare label; swap it for a clear
+      // first-person statement so the model has something natural to react to.
+      const convo = turns.filter((t) => t.kind !== 'emotion')
+      const withEmotion: Turn[] = [
+        ...convo,
+        { role: 'you', text: `${verb} ${label.toLowerCase()} ${whenPhrase}.` },
+      ]
+      const [q] = await Promise.all([
+        llmFollowUp(settings, withEmotion, emotionContext(label, ctx)),
+        think,
+      ])
+      return q.replace(/^["']|["']$/g, '')
+    } catch {
+      /* fall through to local engine */
+    }
+  }
+  await think
+  return localEmotionFollowUp(emotionId, ctx)
 }
 
 /** Weekly insight, LLM-enhanced when configured, else local pattern-spotting. */

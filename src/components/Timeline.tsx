@@ -3,6 +3,9 @@ import { ChevronDown, Search, X } from 'lucide-react'
 import type { Entry, Mood } from '../types'
 import { MOODS } from '../types'
 import Mascot from './Mascot'
+import { MoodFace } from './MoodFace'
+import { EmotionChip } from './EmotionPicker'
+import type { SelectorStyle } from '../lib/selectorStyle'
 import Button from './Button'
 
 interface Props {
@@ -12,6 +15,7 @@ interface Props {
   filterTheme?: string | null
   onSelectTheme?: (theme: string) => void
   onClearFilter?: () => void
+  selectorStyle: SelectorStyle
 }
 
 function matches(e: Entry, q: string) {
@@ -215,7 +219,9 @@ export default function Timeline({
   filterTheme,
   onSelectTheme,
   onClearFilter,
+  selectorStyle,
 }: Props) {
+  const faces = selectorStyle === 'faces'
   const [query, setQuery] = useState('')
   const [moodFilter, setMoodFilter] = useState<Mood | null>(null)
   const [monthFilter, setMonthFilter] = useState<string | null>(null)
@@ -305,7 +311,11 @@ export default function Timeline({
                 moodFilter === m.key ? 'bg-accent ring-2 ring-accent' : 'bg-surface shadow-sm hover:bg-surface-2'
               }`}
             >
-              <span aria-hidden="true">{m.emoji}</span>
+              {faces ? (
+                <MoodFace mood={m.key} size={22} decorative />
+              ) : (
+                <span aria-hidden="true">{m.emoji}</span>
+              )}
             </button>
           ))}
         </div>
@@ -353,14 +363,21 @@ export default function Timeline({
                       onOpen ? 'cursor-pointer hover:shadow-md active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none' : ''
                     }`}
                   >
-                    <div className="mb-2 flex items-center justify-between">
+                    <div className="mb-2 flex items-center justify-between gap-2">
                       <span className="text-xs font-semibold text-mute">{when(e.createdAt)}</span>
                       <span
                         className="grid h-8 w-8 place-items-center rounded-xl text-lg ring-1 ring-border/60"
-                        style={{ background: e.mood ? MOOD_VAR[e.mood] : 'var(--surface-2)' }}
+                        style={{
+                          background:
+                            e.mood && !faces ? MOOD_VAR[e.mood] : 'var(--surface-2)',
+                        }}
                       >
                         {e.mood ? (
-                          <span aria-hidden="true">{moodEmoji(e)}</span>
+                          faces ? (
+                            <MoodFace mood={e.mood} size={24} decorative />
+                          ) : (
+                            <span aria-hidden="true">{moodEmoji(e)}</span>
+                          )
                         ) : (
                           // No mood logged: a calm Mira mark reads as intentional
                           // (and on-brand) rather than a placeholder glyph.
@@ -369,6 +386,11 @@ export default function Timeline({
                       </span>
                     </div>
                     <p className="font-medium leading-relaxed text-content">{e.summary}</p>
+                    {e.emotion && (
+                      <div className="mt-2">
+                        <EmotionChip emotion={e.emotion} />
+                      </div>
+                    )}
                     {e.themes.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {e.themes.map((t) => (

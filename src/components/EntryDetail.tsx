@@ -4,12 +4,16 @@ import type { Entry, Mood, Turn } from '../types'
 import { MOODS } from '../types'
 import { dayContext, extractThemes, generateNote, summarize } from '../lib/ai'
 import Mascot from './Mascot'
+import { MoodFace } from './MoodFace'
+import { EmotionChip, EmotionPicker } from './EmotionPicker'
+import type { SelectorStyle } from '../lib/selectorStyle'
 
 interface Props {
   entry: Entry
   onClose: () => void
   onSave: (entry: Entry) => void
   onDelete: (id: string) => void
+  selectorStyle: SelectorStyle
 }
 
 const MOOD_VAR: Record<Mood, string> = {
@@ -33,11 +37,13 @@ function fullWhen(ts: number) {
   return `${day} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
 }
 
-export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props) {
+export default function EntryDetail({ entry, onClose, onSave, onDelete, selectorStyle }: Props) {
+  const faces = selectorStyle === 'faces'
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [draftTurns, setDraftTurns] = useState<Turn[]>(entry.turns)
   const [draftMood, setDraftMood] = useState<Mood | null>(entry.mood)
+  const [draftEmotion, setDraftEmotion] = useState<string | null>(entry.emotion ?? null)
   // Default to the readable journal note; the raw chat is one tap away.
   const [view, setView] = useState<'note' | 'chat'>('note')
   const [note, setNote] = useState<string | undefined>(entry.note)
@@ -80,6 +86,7 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
   const startEdit = () => {
     setDraftTurns(entry.turns)
     setDraftMood(entry.mood)
+    setDraftEmotion(entry.emotion ?? null)
     setEditing(true)
   }
 
@@ -133,6 +140,8 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
     const updated: Entry = {
       ...entry,
       mood: draftMood,
+      // Preserve/clear the optional emotion tag alongside the mood edit.
+      emotion: draftEmotion ?? undefined,
       turns,
       themes: extractThemes(youText),
       summary: youText ? summarize(turns) : `Checked in — feeling ${moodLabel ?? 'okay'}`,
@@ -178,10 +187,20 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
         ) : (
           <span
             className="grid h-9 w-9 place-items-center rounded-full text-lg"
-            style={{ background: entry.mood ? MOOD_VAR[entry.mood] : 'var(--surface-2)' }}
+            style={{ background: entry.mood && !faces ? MOOD_VAR[entry.mood] : 'var(--surface-2)' }}
             aria-label={entry.mood ? `Mood: ${entry.mood}` : 'No mood'}
           >
-            {MOODS.find((m) => m.key === entry.mood)?.emoji ?? '📝'}
+            {entry.mood ? (
+              faces ? (
+                <MoodFace mood={entry.mood} size={26} decorative />
+              ) : (
+                <span aria-hidden="true">{MOODS.find((m) => m.key === entry.mood)?.emoji}</span>
+              )
+            ) : faces ? (
+              <Mascot size={22} mood="calm" decorative />
+            ) : (
+              '📝'
+            )}
           </span>
         )}
       </header>
@@ -210,12 +229,24 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
                 className={`grid h-11 place-items-center rounded-2xl text-2xl ring-1 transition-all active:scale-90 ${
                   draftMood === m.key ? 'ring-2 ring-accent' : 'ring-border'
                 }`}
-                style={{ background: draftMood === m.key ? MOOD_VAR[m.key] : 'var(--surface-2)' }}
+                style={{ background: draftMood === m.key && !faces ? MOOD_VAR[m.key] : 'var(--surface-2)' }}
               >
-                <span className={draftMood === m.key ? '' : 'opacity-70'}>{m.emoji}</span>
+                {faces ? (
+                  <MoodFace mood={m.key} size={30} decorative className={draftMood === m.key ? '' : 'opacity-70'} />
+                ) : (
+                  <span className={draftMood === m.key ? '' : 'opacity-70'}>{m.emoji}</span>
+                )}
               </button>
             ))}
           </div>
+
+          {/* Optional feeling tag — only in the Faces (Hybrid) selector style. */}
+          {faces && (
+            <div className="mt-3">
+              <div className="mb-1.5 text-xs font-semibold text-soft">Feeling (optional)</div>
+              <EmotionPicker value={draftEmotion} onChange={setDraftEmotion} />
+            </div>
+          )}
         </div>
       )}
 
@@ -262,6 +293,11 @@ export default function EntryDetail({ entry, onClose, onSave, onDelete }: Props)
         aria-labelledby={editing ? undefined : view === 'note' ? 'entry-tab-note' : 'entry-tab-chat'}
         className="no-scrollbar flex-1 space-y-4 overflow-y-auto px-5 py-5"
       >
+        {!editing && entry.emotion && (
+          <div>
+            <EmotionChip emotion={entry.emotion} size={20} />
+          </div>
+        )}
         {showChat ? (
           <>
             {shownTurns.map((t, i) => {

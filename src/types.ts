@@ -3,7 +3,14 @@ export type Mood = 'rough' | 'low' | 'okay' | 'good' | 'great'
 export interface Turn {
   role: 'you' | 'mira'
   text: string
-  kind?: 'text' | 'mood'
+  kind?: 'text' | 'mood' | 'emotion'
+  /**
+   * For `kind: 'emotion'` turns — the emotion tag id (see `lib/emotions.ts`) so
+   * the chat bubble can draw the matching droplet face. Transient/display-only:
+   * the persisted `Entry.emotion` field is the source of truth, so these turns
+   * are stripped before saving (see Capture `buildEntry`).
+   */
+  emotion?: string
 }
 
 export interface Entry {
@@ -20,6 +27,13 @@ export interface Entry {
    * Generated lazily when an entry is opened and persisted with the entry.
    */
   note?: string
+  /**
+   * OPTIONAL categorical emotion tag id (see `lib/emotions.ts`), captured in the
+   * Hybrid "Faces" selector as a layer ON TOP of the 1–5 valence `mood`. It is
+   * independent of the mood score, so the trend chart is unaffected. Persists
+   * automatically via whole-object IndexedDB storage. Undefined when untagged.
+   */
+  emotion?: string
 }
 
 export const MOODS: { key: Mood; emoji: string; label: string }[] = [

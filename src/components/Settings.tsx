@@ -6,6 +6,9 @@ import { PROVIDER_PRESETS, llmFollowUp, saveSettings } from '../lib/llm'
 import type { ThemeMode } from '../lib/theme'
 import { resolveIsDark } from '../lib/theme'
 import { PALETTES, applyPalette, loadPalette, savePalette } from '../lib/palette'
+import type { SelectorStyle } from '../lib/selectorStyle'
+import { MOODS } from '../types'
+import { MoodFace } from './MoodFace'
 import {
   clearLock,
   exportBackup,
@@ -21,6 +24,8 @@ interface Props {
   initial: LLMSettings
   themeMode: ThemeMode
   onThemeChange: (m: ThemeMode) => void
+  selectorStyle: SelectorStyle
+  onSelectorStyleChange: (s: SelectorStyle) => void
   onClose: () => void
   onSaved: (s: LLMSettings) => void
   entries: Entry[]
@@ -41,6 +46,8 @@ export default function Settings({
   initial,
   themeMode,
   onThemeChange,
+  selectorStyle,
+  onSelectorStyleChange,
   onClose,
   onSaved,
   lock,
@@ -244,6 +251,49 @@ export default function Settings({
                 )
               })}
             </div>
+          </div>
+        </section>
+
+        {/* Mood selector style */}
+        <section>
+          <h3 className="mb-1 font-display text-sm font-semibold text-content">Mood selector</h3>
+          <p className="mb-3 text-xs font-medium text-mute">
+            How you log a mood on the Write screen. Faces adds an optional feeling tag; Weather is
+            the classic scale.
+          </p>
+          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Mood selector style">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={selectorStyle === 'faces'}
+              onClick={() => onSelectorStyleChange('faces')}
+              className={`flex flex-col items-center gap-2 rounded-2xl p-3 shadow-sm transition active:scale-95 ${
+                selectorStyle === 'faces' ? 'bg-accent-soft ring-2 ring-accent' : 'bg-surface'
+              }`}
+            >
+              <span className="flex items-center gap-1" aria-hidden="true">
+                {[0, 2, 4].map((lvl) => (
+                  <MoodFace key={lvl} level={lvl} size={26} decorative />
+                ))}
+              </span>
+              <span className="text-[11px] font-semibold text-content">Faces · new</span>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={selectorStyle === 'weather'}
+              onClick={() => onSelectorStyleChange('weather')}
+              className={`flex flex-col items-center gap-2 rounded-2xl p-3 shadow-sm transition active:scale-95 ${
+                selectorStyle === 'weather' ? 'bg-accent-soft ring-2 ring-accent' : 'bg-surface'
+              }`}
+            >
+              <span className="flex items-center gap-1 text-xl" aria-hidden="true">
+                {MOODS.filter((_, i) => i % 2 === 0).map((m) => (
+                  <span key={m.key}>{m.emoji}</span>
+                ))}
+              </span>
+              <span className="text-[11px] font-semibold text-content">Weather · classic</span>
+            </button>
           </div>
         </section>
 

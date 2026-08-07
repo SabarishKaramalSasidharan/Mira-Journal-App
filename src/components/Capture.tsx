@@ -9,6 +9,7 @@ import {
   Lock,
   Mic,
   MicOff,
+  MoreHorizontal,
   Square,
   Trash2,
 } from 'lucide-react'
@@ -93,6 +94,10 @@ export default function Capture({ onAutoSave, onFinish, selectorStyle, feelingEn
   // feeling in-chat with a row of quick-reply chips. This flag drives that
   // ephemeral invitation; it clears when a chip is tapped or the user types.
   const [inviteActive, setInviteActive] = useState(false)
+  // Option B progressive disclosure: whether the in-chat quick-reply row has
+  // expanded from the 5 common chips to the FULL grouped emotion set. Scoped to
+  // the current invite — reset whenever the invite is dismissed / date changes.
+  const [feelingExpanded, setFeelingExpanded] = useState(false)
   // Offer the in-chat invitation at most once per conversation.
   const inviteOfferedRef = useRef(false)
   const [thinking, setThinking] = useState(false)
@@ -134,6 +139,7 @@ export default function Capture({ onAutoSave, onFinish, selectorStyle, feelingEn
     setMoodOpened(false)
     setEmotionOpened(false)
     setInviteActive(false)
+    setFeelingExpanded(false)
     inviteOfferedRef.current = false
     setThinking(false)
     // …and drop this entry's identity so the new date persists as its own entry.
@@ -340,8 +346,9 @@ export default function Capture({ onAutoSave, onFinish, selectorStyle, feelingEn
     if (!meta) return
     setEmotion(id)
     setEmotionOpened(true)
-    // Option B: picking a chip retires the in-chat invitation.
+    // Option B: picking a chip retires the in-chat invitation (and its expanded state).
     setInviteActive(false)
+    setFeelingExpanded(false)
     // The tapped feeling shows up as your message…
     const next: Turn[] = [...turns, { role: 'you', kind: 'emotion', emotion: id, text: meta.label }]
     setTurns(next)
@@ -358,7 +365,10 @@ export default function Capture({ onAutoSave, onFinish, selectorStyle, feelingEn
     if (!text || thinking) return
     // Option B: if the user ignores the invitation and just writes, it quietly
     // goes away (the quick-reply row disappears; nothing is posted).
-    if (inviteActive) setInviteActive(false)
+    if (inviteActive) {
+      setInviteActive(false)
+      setFeelingExpanded(false)
+    }
     const next: Turn[] = [...turns, { role: 'you', text }]
     setTurns(next)
     setDraft('')
@@ -516,7 +526,12 @@ export default function Capture({ onAutoSave, onFinish, selectorStyle, feelingEn
           inviteActive &&
           !emotionOpened &&
           !thinking && (
-            <EmotionInvite miraMood={miraExpression} onPick={selectEmotion} />
+            <EmotionInvite
+              miraMood={miraExpression}
+              onPick={selectEmotion}
+              expanded={feelingExpanded}
+              onExpand={() => setFeelingExpanded(true)}
+            />
           )}
       </div>
 
@@ -865,9 +880,15 @@ function Bubble({ turn, miraMood }: { turn: Turn; miraMood: MascotMood }) {
 function EmotionInvite({
   miraMood,
   onPick,
+  expanded,
+  onExpand,
 }: {
   miraMood: MascotMood
   onPick: (id: string | null) => void
+  /** Whether the row has progressively disclosed the full grouped emotion set. */
+  expanded: boolean
+  /** Reveal the full Pleasant / Unpleasant set (the "More…" chip). */
+  onExpand: () => void
 }) {
   return (
     <div className="animate-fade-up space-y-2">
@@ -879,25 +900,47 @@ function EmotionInvite({
           Want to name the feeling? <span className="text-mute">(optional)</span>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2 pl-10" role="group" aria-label="Quick feelings">
-        {QUICK_FEELINGS.map((id) => {
-          const e = getEmotion(id)
-          if (!e) return null
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onPick(id)}
-              aria-label={e.label}
-              title={e.label}
-              className="flex items-center gap-1.5 rounded-full border border-transparent bg-surface-2 py-1 pl-1 pr-3 shadow-sm transition active:scale-95"
-            >
-              <EmotionFace emotion={e.id} size={24} decorative />
-              <span className="text-xs font-medium leading-none text-soft">{e.label}</span>
-            </button>
-          )
-        })}
-      </div>
+      {expanded ? (
+        /* Progressive disclosure — the FULL catalog, grouped Pleasant / Unpleasant,
+           reusing the shared chip rendering so it matches the other entry points.
+           Picking any chip runs the same `onPick` (→ selectEmotion) as the common
+           five, so the outcome is identical. */
+        <div className="animate-fade-up pl-10">
+          <EmotionGroupChips value={null} onToggle={onPick} className="flex flex-col gap-3" />
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2 pl-10" role="group" aria-label="Quick feelings">
+          {QUICK_FEELINGS.map((id) => {
+            const e = getEmotion(id)
+            if (!e) return null
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onPick(id)}
+                aria-label={e.label}
+                title={e.label}
+                className="flex items-center gap-1.5 rounded-full border border-transparent bg-surface-2 py-1 pl-1 pr-3 shadow-sm transition active:scale-95"
+              >
+                <EmotionFace emotion={e.id} size={24} decorative />
+                <span className="text-xs font-medium leading-none text-soft">{e.label}</span>
+              </button>
+            )
+          })}
+          {/* Progressive disclosure — reveal the full grouped set on demand. */}
+          <button
+            type="button"
+            onClick={onExpand}
+            aria-label="Show more feelings"
+            aria-expanded={false}
+            title="More feelings"
+            className="flex items-center gap-1 rounded-full border border-border bg-surface-2 py-1 pl-3 pr-3 text-xs font-medium leading-none text-soft shadow-sm transition active:scale-95 hover:text-content"
+          >
+            <MoreHorizontal size={16} aria-hidden="true" />
+            More
+          </button>
+        </div>
+      )}
     </div>
   )
 }

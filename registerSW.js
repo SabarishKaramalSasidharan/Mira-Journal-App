@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/Mira-Journal-App/sw.js', { scope: '/Mira-Journal-App/' })})}
